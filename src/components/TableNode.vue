@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from "vue";
+import { computed, ref, nextTick, onUnmounted } from "vue";
 import { useSchemaStore, type Table } from "../stores/schemaStore";
+
+const IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 const props = defineProps<{
   table: Table;
@@ -10,6 +12,9 @@ const props = defineProps<{
 const schemaStore = useSchemaStore();
 const isDragging = ref(false);
 const dragOffset = ref({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
+const isRenaming = ref(false);
+const renameInput = ref<HTMLInputElement | null>(null);
+const renameValue = ref("");
 
 const isSelected = computed(
   () => schemaStore.selectedTableId === props.table.id,
@@ -83,6 +88,28 @@ const handleKeyDown = (e: KeyboardEvent) => {
   }
 };
 
+const startRename = async () => {
+  if (schemaStore.viewMode === 'read') return;
+  renameValue.value = props.table.name;
+  isRenaming.value = true;
+  await nextTick();
+  renameInput.value?.focus();
+  renameInput.value?.select();
+};
+
+const commitRename = () => {
+  let sanitized = renameValue.value.replace(/[^a-zA-Z0-9_]/g, "");
+  if (sanitized && /^\d/.test(sanitized)) sanitized = "_" + sanitized;
+  if (sanitized && IDENTIFIER_RE.test(sanitized)) {
+    schemaStore.updateTable(props.table.id, { name: sanitized });
+  }
+  isRenaming.value = false;
+};
+
+const cancelRename = () => {
+  isRenaming.value = false;
+};
+
 onUnmounted(() => {
   window.removeEventListener("mousemove", handleMouseMove);
   window.removeEventListener("mouseup", handleMouseUp);
@@ -123,13 +150,23 @@ onUnmounted(() => {
             : 'bg-secondary-800/50 border-secondary-800'
         "
       >
-        <span class="text-xs font-bold text-secondary-50 font-mono tracking-wider">{{
-          table.name
-        }}</span>
-        <div class="flex gap-1">
-          <div class="w-1.5 h-1.5 rounded-full bg-secondary-700" />
-          <div class="w-1.5 h-1.5 rounded-full bg-secondary-700" />
-        </div>
+        <input
+          v-if="isRenaming"
+          ref="renameInput"
+          v-model="renameValue"
+          class="text-xs font-bold text-secondary-50 font-mono tracking-wider bg-transparent border-b border-primary-500 focus:outline-none w-full"
+          @blur="commitRename"
+          @keydown.enter="commitRename"
+          @keydown.escape="cancelRename"
+          @mousedown.stop
+        >
+        <span
+          v-else
+          class="text-xs font-bold text-secondary-50 font-mono tracking-wider cursor-text"
+          :title="schemaStore.viewMode === 'full' ? 'Double-click to rename' : undefined"
+          @dblclick.stop="startRename"
+        >{{ table.name }}</span>
+        <span class="text-[9px] font-mono text-secondary-500 shrink-0">{{ table.columns.length }} col</span>
       </div>
 
       <!-- Columns List -->

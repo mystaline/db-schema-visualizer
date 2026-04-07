@@ -15,11 +15,17 @@ export interface Column {
   defaultValue: string | null;
 }
 
+export interface IndexColumn {
+  columnId: string;
+  order: "ASC" | "DESC";
+}
+
 export interface Index {
   id: string;
   name: string;
   type: "unique" | "normal";
-  columnIds: string[];
+  columns: IndexColumn[];
+  expressions: string[];
   filter: string;
 }
 
@@ -162,6 +168,13 @@ export const useSchemaStore = defineStore("schema", () => {
     table.indexes.push({ ...index, id: crypto.randomUUID() });
   };
 
+  const reorderColumns = (tableId: string, fromIndex: number, toIndex: number) => {
+    const table = tables.value.find((t) => t.id === tableId);
+    if (!table || fromIndex === toIndex) return;
+    const [moved] = table.columns.splice(fromIndex, 1);
+    table.columns.splice(toIndex, 0, moved);
+  };
+
   const removeIndex = (tableId: string, indexId: string) => {
     const table = tables.value.find((t) => t.id === tableId);
     if (!table) return;
@@ -250,6 +263,7 @@ export const useSchemaStore = defineStore("schema", () => {
     updateForeignKey,
     removeForeignKey,
     addIndex,
+    reorderColumns,
     removeIndex,
     getShareableData,
     loadFromShareableData,

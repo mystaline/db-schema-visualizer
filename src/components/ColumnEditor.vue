@@ -5,6 +5,8 @@ import { useSchemaStore, type Column } from "../stores/schemaStore";
 const schemaStore = useSchemaStore();
 const nameInputs = ref<HTMLInputElement[]>([]);
 const pendingDeleteId = ref<string | null>(null);
+const dragIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
 
 const IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -135,6 +137,25 @@ const confirmDelete = () => {
 const cancelDelete = () => {
   pendingDeleteId.value = null;
 };
+
+const onDragStart = (idx: number) => {
+  dragIndex.value = idx;
+};
+const onDragOver = (idx: number, e: DragEvent) => {
+  e.preventDefault();
+  dragOverIndex.value = idx;
+};
+const onDrop = (idx: number) => {
+  if (dragIndex.value !== null && schemaStore.selectedTableId) {
+    schemaStore.reorderColumns(schemaStore.selectedTableId, dragIndex.value, idx);
+  }
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+};
+const onDragEnd = () => {
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+};
 </script>
 
 <template>
@@ -158,22 +179,41 @@ const cancelDelete = () => {
       <div class="text-center">NULL</div>
       <div class="text-center">UNQ</div>
     </div>
+    <p class="text-[10px] text-secondary-400 px-2 flex items-center gap-1.5">
+      <span class="inline-block w-1 h-3 bg-success-500 rounded-full"></span> has default value
+    </p>
 
     <!-- Column Rows -->
     <div class="space-y-2 mt-2 pb-1">
       <div
-        v-for="col in schemaStore.selectedTable?.columns"
+        v-for="(col, colIdx) in schemaStore.selectedTable?.columns"
         :key="col.id"
-        :class="invalidColumnIds.has(col.id)
-          ? 'border-danger-500/50 hover:border-danger-500/70'
-          : 'border-secondary-800/50 hover:border-secondary-700/50'"
+        :class="[
+          invalidColumnIds.has(col.id)
+            ? 'border-danger-500/50 hover:border-danger-500/70'
+            : 'border-secondary-800/50 hover:border-secondary-700/50',
+          dragOverIndex === colIdx && dragIndex !== colIdx ? 'border-t-primary-500 border-t-2' : '',
+          col.defaultValue ? 'border-l-success-500/60 border-l-2' : ''
+        ]"
         class="group relative bg-secondary-900/40 rounded-lg border transition-colors overflow-hidden"
+        :draggable="schemaStore.viewMode === 'full'"
+        @dragstart="onDragStart(colIdx)"
+        @dragover="onDragOver(colIdx, $event)"
+        @drop="onDrop(colIdx)"
+        @dragend="onDragEnd"
       >
         <!-- Normal Row -->
         <div
           v-if="pendingDeleteId !== col.id"
-          class="grid grid-cols-[1fr_80px_28px_28px_28px] gap-1.5 items-center px-2 py-1.5"
+          class="grid items-center px-2 py-1.5"
+          :class="schemaStore.viewMode === 'full'
+            ? 'grid-cols-[16px_1fr_80px_28px_28px_28px] gap-1'
+            : 'grid-cols-[1fr_80px_28px_28px_28px] gap-1.5'"
         >
+          <!-- Drag Handle (edit mode only) -->
+          <div v-if="schemaStore.viewMode === 'full'" class="flex items-center justify-center cursor-grab text-secondary-600 hover:text-secondary-400">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+          </div>
           <!-- Name Input -->
           <input
             ref="nameInputs"
@@ -184,6 +224,7 @@ const cancelDelete = () => {
             :aria-label="`Column name: ${col.name}`"
             :readonly="schemaStore.viewMode === 'read'"
             :title="invalidColumnIds.has(col.id) ? 'Invalid: use letters, digits, underscores only; no duplicates' : undefined"
+            @click.stop
             @input="(e) => updateColumnName(col.id, (e.target as HTMLInputElement).value)"
           >
 
@@ -193,6 +234,7 @@ const cancelDelete = () => {
             :disabled="schemaStore.viewMode === 'read'"
             class="w-full bg-secondary-950 border border-secondary-800 text-[10px] rounded px-1 py-0.5 text-secondary-300 focus:border-primary-500 focus:outline-none focus:text-secondary-50 transition-colors disabled:opacity-60 disabled:cursor-default"
             :aria-label="`Column type for ${col.name}`"
+            @click.stop
             @change="
               (e) =>
                 updateColumn(col.id, {
@@ -267,20 +309,6 @@ const cancelDelete = () => {
           </div>
         </div>
 
-        <!-- Delete button: absolute overlay, not in grid — preserves NAME column width -->
-        <button
-          v-if="pendingDeleteId !== col.id && schemaStore.viewMode === 'full'"
-          class="absolute right-1.5 top-1/2 -translate-y-1/2 text-secondary-600 hover:text-danger-500 transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 rounded"
-          :aria-label="`Delete column ${col.name}`"
-          @click="requestDelete(col.id)"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </button>
-
         <!-- Delete Confirmation Row -->
         <div
           v-if="pendingDeleteId === col.id"
@@ -302,6 +330,35 @@ const cancelDelete = () => {
               Cancel
             </button>
           </div>
+        </div>
+
+        <!-- Expanded Row: Default Value + Delete -->
+        <div
+          v-if="pendingDeleteId !== col.id"
+          class="px-2 pb-1.5 flex items-center gap-1.5"
+          @click.stop
+        >
+          <span class="text-[9px] font-bold text-secondary-500 uppercase shrink-0">DEFAULT</span>
+          <input
+            :value="col.defaultValue ?? ''"
+            type="text"
+            placeholder="e.g. now(), gen_random_uuid(), 'active'"
+            class="flex-1 min-w-0 bg-secondary-950 border border-secondary-800 rounded px-2 py-0.5 text-[10px] text-secondary-200 focus:border-primary-500 focus:outline-none transition-colors"
+            :readonly="schemaStore.viewMode === 'read'"
+            @input="(e) => updateColumn(col.id, { defaultValue: (e.target as HTMLInputElement).value || null })"
+          >
+          <button
+            v-if="schemaStore.viewMode === 'full'"
+            class="shrink-0 text-secondary-400 hover:text-danger-500 transition-colors p-1 rounded cursor-pointer"
+            :aria-label="`Delete column ${col.name}`"
+            @click="requestDelete(col.id)"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
         </div>
       </div>
     </div>

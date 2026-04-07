@@ -72,15 +72,21 @@ const generatedSql = computed(() => {
   // 3. Indexes
   schemaStore.tables.forEach((table) => {
     table.indexes.forEach((idx) => {
-      const colNames = idx.columnIds
-        .map((id) => table.columns.find((c) => c.id === id)?.name)
-        .filter(Boolean)
-        .join(", ");
+      const parts: string[] = [];
+      // Column-based entries with ordering
+      for (const col of (idx.columns ?? [])) {
+        const name = table.columns.find((c) => c.id === col.columnId)?.name;
+        if (name) parts.push(col.order === "DESC" ? `${name} DESC` : name);
+      }
+      // Expression entries
+      for (const expr of (idx.expressions ?? [])) {
+        if (expr.trim()) parts.push(expr.trim());
+      }
 
       const uniqueStr = idx.type === "unique" ? " UNIQUE" : "";
       const whereStr = idx.filter ? ` WHERE ${idx.filter}` : "";
 
-      sql += `CREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${colNames})${whereStr};\n`;
+      sql += `CREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};\n`;
     });
   });
 

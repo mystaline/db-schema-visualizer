@@ -105,8 +105,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "created_at",   type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_users_email",    type: "normal", columnIds: [userEmailId],    filter: "" },
-        { id: crypto.randomUUID(), name: "idx_users_username", type: "normal", columnIds: [userUsernameId], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_users_email",    type: "normal", columns: [{ columnId: userEmailId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_users_username", type: "normal", columns: [{ columnId: userUsernameId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: ["role IN ('admin', 'author', 'reader')"],
     });
@@ -127,9 +127,9 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "created_at", type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_posts_author_id",    type: "normal", columnIds: [postAuthorId],    filter: "" },
-        { id: crypto.randomUUID(), name: "unq_posts_slug",         type: "unique", columnIds: [postSlugId],      filter: "" },
-        { id: crypto.randomUUID(), name: "idx_posts_published_at", type: "normal", columnIds: [postPublishedId], filter: "status = 'published'" },
+        { id: crypto.randomUUID(), name: "idx_posts_author_id",    type: "normal", columns: [{ columnId: postAuthorId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "unq_posts_slug",         type: "unique", columns: [{ columnId: postSlugId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_posts_published_at", type: "normal", columns: [{ columnId: postPublishedId, order: "ASC" }], expressions: [], filter: "status = 'published'" },
       ],
       checkConstraints: ["status IN ('draft', 'published', 'archived')"],
     });
@@ -145,7 +145,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "name", type: "varchar", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "unq_tags_slug", type: "unique", columnIds: [tagSlugId], filter: "" },
+        { id: crypto.randomUUID(), name: "unq_tags_slug", type: "unique", columns: [{ columnId: tagSlugId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: [],
     });
@@ -160,8 +160,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: postTagTagId,  name: "tag_id",  type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_post_tags_post_id", type: "normal", columnIds: [postTagPostId], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_post_tags_tag_id",  type: "normal", columnIds: [postTagTagId],  filter: "" },
+        { id: crypto.randomUUID(), name: "idx_post_tags_post_id", type: "normal", columns: [{ columnId: postTagPostId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_post_tags_tag_id",  type: "normal", columns: [{ columnId: postTagTagId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: [],
     });
@@ -180,8 +180,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "created_at", type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_comments_post_id",   type: "normal", columnIds: [commentPostId],   filter: "" },
-        { id: crypto.randomUUID(), name: "idx_comments_author_id", type: "normal", columnIds: [commentAuthorId], filter: "author_id IS NOT NULL" },
+        { id: crypto.randomUUID(), name: "idx_comments_post_id",   type: "normal", columns: [{ columnId: commentPostId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_comments_author_id", type: "normal", columns: [{ columnId: commentAuthorId, order: "ASC" }], expressions: [], filter: "author_id IS NOT NULL" },
       ],
       checkConstraints: [],
     });
@@ -247,7 +247,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "unq_customers_email", type: "unique", columnIds: [customerEmailColId], filter: "" },
+        { id: crypto.randomUUID(), name: "unq_customers_email", type: "unique", columns: [{ columnId: customerEmailColId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: [],
     });
@@ -296,7 +296,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_products_name", type: "normal", columnIds: [productNameColId], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_products_name", type: "normal", columns: [{ columnId: productNameColId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: ["price > 0", "stock >= 0"],
     });
@@ -345,8 +345,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_orders_customer_id", type: "normal", columnIds: [orderCustomerColId], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_orders_status", type: "normal", columnIds: [orderStatusColId], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_orders_customer_id", type: "normal", columns: [{ columnId: orderCustomerColId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_orders_status", type: "normal", columns: [{ columnId: orderStatusColId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: [],
     });
@@ -395,8 +395,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_order_items_order_id", type: "normal", columnIds: [orderItemOrderColId], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_order_items_product_id", type: "normal", columnIds: [orderItemProductColId], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_order_items_order_id", type: "normal", columns: [{ columnId: orderItemOrderColId, order: "ASC" }], expressions: [], filter: "" },
+        { id: crypto.randomUUID(), name: "idx_order_items_product_id", type: "normal", columns: [{ columnId: orderItemProductColId, order: "ASC" }], expressions: [], filter: "" },
       ],
       checkConstraints: ["quantity > 0"],
     });

@@ -10,13 +10,16 @@ A browser-based PostgreSQL schema designer. Build entity-relationship diagrams v
 ## Features
 
 - **Canvas** — pan, zoom, drag tables freely; FK relations drawn as SVG lines
-- **Column editor** — name, type (full PostgreSQL type list), PK, nullable, unique flags; live identifier validation
+- **Column editor** — name, type (full PostgreSQL type list), PK, nullable, unique, default value; live identifier validation; drag-and-drop reorder
 - **Foreign key editor** — outgoing and incoming references per table, ON DELETE/UPDATE actions
-- **Index editor** — normal and unique indexes, composite columns, partial `WHERE` filter; auto-generated names
+- **Index editor** — normal and unique indexes, composite columns, per-column ASC/DESC ordering, expression indexes, partial `WHERE` filter; auto-generated names
+- **Inline rename** — double-click table name on canvas to rename
 - **CHECK constraint editor** — free-form SQL expressions per table
 - **SQL export** — generates `CREATE TABLE`, `ALTER TABLE ... ADD CONSTRAINT` (FKs), and `CREATE INDEX` in correct dependency order
 - **URL sharing** — entire schema is gzip-compressed and base64-encoded into the URL hash; shareable as read-only or full-edit
-- **Presets** — Blog and E-commerce starter schemas
+- **localStorage** — auto-saves on every change; URL-first hydration with localStorage fallback
+- **Keyboard shortcuts** — Delete key to remove selected table
+- **Presets** — Blog (5 tables) and E-commerce (4 tables) starter schemas
 - **Dark / light mode** — Raijin palette, dark-first
 
 ## Getting Started
@@ -45,12 +48,12 @@ pnpm preview
 
 ## Planned
 
-- Column default values
-- Table rename and notes
+- Table notes
 - Named CHECK constraints in SQL export (`CONSTRAINT chk_<table>_<n> CHECK (...)`)
 - Composite primary key support
 - FK edit (currently delete + recreate)
 - Undo / redo
+- Multi-project navigation with IndexedDB
 
 ## License
 

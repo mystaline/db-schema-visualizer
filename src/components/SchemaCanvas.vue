@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSchemaStore } from '../stores/schemaStore'
 import TableNode from './TableNode.vue'
 import RelationLines from './RelationLines.vue'
@@ -19,8 +19,35 @@ const hydrateFromUrl = async () => {
   schemaStore.loadFromLocalStorage()
 }
 
+const pendingDeleteTable = ref(false)
+
+const handleGlobalKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Delete' && schemaStore.selectedTableId && schemaStore.viewMode === 'full') {
+    // Don't trigger if user is typing in an input/textarea/select
+    const tag = (e.target as HTMLElement)?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    e.preventDefault()
+    pendingDeleteTable.value = true
+  }
+  if (e.key === 'Escape') {
+    pendingDeleteTable.value = false
+  }
+}
+
+const confirmDeleteTable = () => {
+  if (schemaStore.selectedTableId) {
+    schemaStore.removeTable(schemaStore.selectedTableId)
+  }
+  pendingDeleteTable.value = false
+}
+
 onMounted(() => {
   hydrateFromUrl()
+  window.addEventListener('keydown', handleGlobalKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeyDown)
 })
 
 const handleCanvasMouseDown = (e: MouseEvent) => {
@@ -110,6 +137,22 @@ const canvasStyle = computed(() => ({
           Waiting for system entity definition...
         </p>
       </div>
+    </div>
+
+    <!-- Delete Table Confirmation -->
+    <div
+      v-if="pendingDeleteTable && schemaStore.selectedTable"
+      class="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-secondary-900 border border-danger-500/50 rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4"
+    >
+      <span class="text-sm text-secondary-200">Delete <span class="font-bold text-danger-400">{{ schemaStore.selectedTable.name }}</span>?</span>
+      <button
+        class="px-3 py-1 text-xs font-bold bg-danger-500/20 hover:bg-danger-500/40 text-danger-300 rounded-lg transition-colors"
+        @click="confirmDeleteTable"
+      >Delete</button>
+      <button
+        class="px-3 py-1 text-xs font-bold bg-secondary-800 hover:bg-secondary-700 text-secondary-300 rounded-lg transition-colors"
+        @click="pendingDeleteTable = false"
+      >Cancel</button>
     </div>
 
     <!-- Canvas HUD Controls -->

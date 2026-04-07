@@ -39,7 +39,7 @@ const deleteTable = (id: string, name: string) => {
         {{ table.name }}
       </span>
 
-      <div class="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div class="ml-auto flex items-center gap-2">
         <span class="text-[10px] font-mono text-secondary-500 px-1.5 py-0.5 bg-secondary-900/50 rounded border border-secondary-800">
           {{ table.columns.length }}
         </span>
