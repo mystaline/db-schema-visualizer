@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  /* Raijin Palette */
+  --color-primary-50: #eaf7ff;
+  --color-primary-100: #bce9ff;
+  --color-primary-200: #75d4ff;
+  --color-primary-300: #1fbcff;
+  --color-primary-400: #009eff;
+  --color-primary-500: #0078e6;
+  --color-primary-600: #005db8;
+  --color-primary-700: #00458c;
+  --color-primary-800: #002f5c;
+  --color-primary-900: #001a33;
+
+  --color-secondary-50: #f3f5f8;
+  --color-secondary-100: #d7dee6;
+  --color-secondary-200: #b0bac5;
+  --color-secondary-300: #7e8ea0;
+  --color-secondary-400: #5b6678;
+  --color-secondary-500: #3d4859;
+  --color-secondary-600: #2c3543;
+  --color-secondary-700: #1f2631;
+  --color-secondary-800: #131921;
+  --color-secondary-900: #0a0e14;
+  --color-secondary-950: #060810;
+
+  --color-success-50: #f2fff9;
+  --color-success-100: #c3ffec;
+  --color-success-200: #85ffda;
+  --color-success-300: #4cffc7;
+  --color-success-400: #1affb2;
+  --color-success-500: #00cc8e;
+  --color-success-600: #009e6d;
+  --color-success-700: #007452;
+  --color-success-800: #004d37;
+  --color-success-900: #00291d;
+
+  --color-danger-50: #fff2fb;
+  --color-danger-100: #ffcdf0;
+  --color-danger-200: #ff98de;
+  --color-danger-300: #ff5dcc;
+  --color-danger-400: #ff29b9;
+  --color-danger-500: #d31394;
+  --color-danger-600: #a10f72;
+  --color-danger-700: #740b53;
+  --color-danger-800: #4a0735;
+  --color-danger-900: #29041e;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Canvas dot grid color — separate variable so it doesn't invert with the secondary scale */
+:root {
+  --dot-color: #1f2631;
+}
+
+.light {
+  --dot-color: #b0bac5;
+}
+
+@layer base {
+  body {
+    @apply bg-secondary-900 text-secondary-50 selection:bg-primary-500/30 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Light mode: invert the secondary scale so all dark-first utilities flip naturally */
+.light {
+  --color-secondary-50: #0a0e14;
+  --color-secondary-100: #131921;
+  --color-secondary-200: #1f2631;
+  --color-secondary-300: #2c3543;
+  --color-secondary-400: #3d4859;
+  --color-secondary-500: #5b6678;
+  --color-secondary-600: #7e8ea0;
+  --color-secondary-700: #b0bac5;
+  --color-secondary-800: #d7dee6;
+  --color-secondary-900: #f3f5f8;
+  --color-secondary-950: #ffffff;
+}
+
+/* Custom grain effect for dark theme */
+.bg-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+  pointer-events: none;
+}
