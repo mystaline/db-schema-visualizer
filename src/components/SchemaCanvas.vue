@@ -9,13 +9,14 @@ const transform = computed(() => schemaStore.canvasTransform)
 const isPanning = ref(false)
 const panOffset = ref({ x: 0, y: 0 })
 
-// Hydrate from URL if present
+// Hydrate on load: URL > localStorage > fresh
 const hydrateFromUrl = async () => {
   const hash = window.location.hash
   if (hash.startsWith('#data=')) {
-    const base64 = hash.slice('#data='.length)
-    await schemaStore.loadFromShareableData(base64)
+    await schemaStore.loadFromShareableData(hash.slice('#data='.length))
+    return
   }
+  schemaStore.loadFromLocalStorage()
 }
 
 onMounted(() => {

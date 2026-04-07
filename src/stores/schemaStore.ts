@@ -1,5 +1,7 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
+
+const STORAGE_KEY = "db_schema_visualizer";
 
 export type ViewMode = 'full' | 'read'
 
@@ -166,6 +168,35 @@ export const useSchemaStore = defineStore("schema", () => {
     table.indexes = table.indexes.filter((idx) => idx.id !== indexId);
   };
 
+  // localStorage Persistence
+  const saveToLocalStorage = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        t: tables.value,
+        f: foreignKeys.value,
+        v: canvasTransform.value,
+        s: selectedTableId.value,
+      }));
+    } catch { /* storage full or unavailable */ }
+  };
+
+  const loadFromLocalStorage = (): boolean => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (parsed.t) tables.value = parsed.t;
+      if (parsed.f) foreignKeys.value = parsed.f;
+      if (parsed.v) canvasTransform.value = parsed.v;
+      if (parsed.s) selectedTableId.value = parsed.s;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  watch([tables, foreignKeys, canvasTransform, selectedTableId], saveToLocalStorage, { deep: true });
+
   // URL Sharing Logic
   const getShareableData = async (permission: ViewMode = 'full') => {
     const data = JSON.stringify({
@@ -222,5 +253,6 @@ export const useSchemaStore = defineStore("schema", () => {
     removeIndex,
     getShareableData,
     loadFromShareableData,
+    loadFromLocalStorage,
   };
 });
