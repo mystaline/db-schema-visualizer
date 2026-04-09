@@ -1,5 +1,9 @@
 import { ref, computed, watch, toRaw } from "vue";
-import { useSchemaStore, type Table, type ForeignKey } from "../stores/schemaStore";
+import {
+  useSchemaStore,
+  type Table,
+  type ForeignKey,
+} from "../stores/schemaStore";
 
 interface Snapshot {
   tables: Table[];
@@ -16,10 +20,12 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSnapshot: string | null = null;
 
 function takeSnapshot(store: ReturnType<typeof useSchemaStore>): Snapshot {
-  return JSON.parse(JSON.stringify({
-    tables: toRaw(store.tables),
-    foreignKeys: toRaw(store.foreignKeys),
-  }));
+  return JSON.parse(
+    JSON.stringify({
+      tables: toRaw(store.tables),
+      foreignKeys: toRaw(store.foreignKeys),
+    }),
+  );
 }
 
 function snapshotKey(snap: Snapshot): string {
@@ -41,7 +47,7 @@ export function useHistory() {
   watch(
     () => [store.tables, store.foreignKeys],
     () => {
-      if (isRestoring) return;
+      if (isRestoring || store.viewMode === "read") return;
 
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
@@ -75,7 +81,7 @@ export function useHistory() {
   }
 
   function undo() {
-    if (!canUndo.value) return;
+    if (!canUndo.value || store.viewMode === "read") return;
     const current = takeSnapshot(store);
     redoStack.value.push(current);
     const previous = undoStack.value.pop()!;
@@ -83,12 +89,18 @@ export function useHistory() {
   }
 
   function redo() {
-    if (!canRedo.value) return;
+    if (!canRedo.value || store.viewMode === "read") return;
     const current = takeSnapshot(store);
     undoStack.value.push(current);
     const next = redoStack.value.pop()!;
     restore(next);
   }
 
-  return { undo, redo, canUndo, canRedo };
+  function clearHistory() {
+    undoStack.value = [];
+    redoStack.value = [];
+    lastSnapshot = snapshotKey(takeSnapshot(store));
+  }
+
+  return { undo, redo, canUndo, canRedo, clearHistory };
 }

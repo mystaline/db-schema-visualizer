@@ -128,7 +128,7 @@ const commitEdit = () => {
   editingFkId.value = null;
 };
 
-// When switching edit target table, clear the target column
+// When switching edit target table, clear the target columns
 watch(
   () => editFk.value.targetTableId,
   () => {
@@ -581,7 +581,9 @@ const actionOptions: ForeignKey["onDelete"][] = [
 
       <button
         :disabled="
-          !newFk.sourceColumnId || !newFk.targetTableId || !newFk.targetColumnId
+          !newFk.sourceColumnId ||
+          !newFk.targetTableId ||
+          !newFk.targetColumnId
         "
         class="w-full flex items-center justify-center gap-2 p-3 bg-secondary-800 hover:bg-primary-600 rounded-xl text-secondary-50 hover:text-white text-xs font-bold transition-all disabled:opacity-20 shadow-lg group active:scale-95"
         @click="addFk"

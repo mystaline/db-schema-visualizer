@@ -1,35 +1,32 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { useSchemaStore, type IndexColumn } from "../stores/schemaStore";
+import { useSchemaStore, type IndexPart } from "../stores/schemaStore";
 
 const schemaStore = useSchemaStore();
 const newIndex = ref({
   name: "",
   type: "normal" as "unique" | "normal",
-  columns: [] as IndexColumn[],
-  expressions: [] as string[],
+  parts: [] as IndexPart[],
   filter: "",
 });
 const newExpression = ref("");
 
 // Auto-generate index name
 watch(
-  () => [newIndex.value.columns, newIndex.value.expressions, newIndex.value.type],
+  () => [newIndex.value.parts, newIndex.value.type],
   () => {
     if (schemaStore.selectedTable) {
-      const colNames = newIndex.value.columns
-        .map((c) => schemaStore.selectedTable?.columns.find((col) => col.id === c.columnId)?.name)
-        .filter(Boolean);
-      const exprNames = newIndex.value.expressions.map((e) => e.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 15));
-      const allNames = [...colNames, ...exprNames].join("_");
+      const generatedName = schemaStore.getIndexName(schemaStore.selectedTable, {
+        type: newIndex.value.type,
+        parts: newIndex.value.parts,
+        filter: newIndex.value.filter,
+      });
 
-      if (allNames) {
-        const prefix = newIndex.value.type === "unique" ? "unq" : "idx";
-        newIndex.value.name = `${prefix}_${schemaStore.selectedTable.name}_${allNames}`;
-        return;
+      if (newIndex.value.parts.length > 0) {
+        newIndex.value.name = generatedName;
+      } else {
+        newIndex.value.name = "";
       }
-
-      newIndex.value.name = "";
     }
   },
   { deep: true },
@@ -39,19 +36,18 @@ const addIndex = () => {
   if (
     !schemaStore.selectedTableId ||
     !newIndex.value.name ||
-    (newIndex.value.columns.length === 0 && newIndex.value.expressions.length === 0)
+    newIndex.value.parts.length === 0
   )
     return;
 
   schemaStore.addIndex(schemaStore.selectedTableId, {
     name: newIndex.value.name,
     type: newIndex.value.type,
-    columns: [...newIndex.value.columns],
-    expressions: [...newIndex.value.expressions],
+    parts: [...newIndex.value.parts],
     filter: newIndex.value.filter,
   });
 
-  newIndex.value = { name: "", type: "normal", columns: [], expressions: [], filter: "" };
+  newIndex.value = { name: "", type: "normal", parts: [], filter: "" };
 };
 
 const IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -68,29 +64,33 @@ const indexNameError = computed(() => {
 });
 
 const toggleColumn = (id: string) => {
-  const idx = newIndex.value.columns.findIndex((c) => c.columnId === id);
+  const idx = newIndex.value.parts.findIndex((p) => p.type === "column" && p.value === id);
   if (idx === -1) {
-    newIndex.value.columns.push({ columnId: id, order: "ASC" });
+    newIndex.value.parts.push({ type: "column", value: id, order: "ASC" });
   } else {
-    newIndex.value.columns.splice(idx, 1);
+    newIndex.value.parts.splice(idx, 1);
   }
 };
 
-const toggleColumnOrder = (id: string) => {
-  const col = newIndex.value.columns.find((c) => c.columnId === id);
-  if (col) col.order = col.order === "ASC" ? "DESC" : "ASC";
+const toggleOrder = (index: number) => {
+  const part = newIndex.value.parts[index];
+  if (part) part.order = part.order === "ASC" ? "DESC" : "ASC";
 };
 
 const addExpression = () => {
   const expr = newExpression.value.trim();
   if (expr) {
-    newIndex.value.expressions.push(expr);
+    newIndex.value.parts.push({ type: "expression", value: expr, order: "ASC" });
     newExpression.value = "";
   }
 };
 
-const removeExpression = (idx: number) => {
-  newIndex.value.expressions.splice(idx, 1);
+const removePart = (idx: number) => {
+  newIndex.value.parts.splice(idx, 1);
+};
+
+const injectColumn = (colName: string) => {
+  newExpression.value += colName;
 };
 
 const getColumnName = (id: string) =>
@@ -156,21 +156,13 @@ const getColumnName = (id: string) =>
         </div>
         <div class="flex flex-wrap gap-1.5">
           <span
-            v-for="col in (idx.columns ?? [])"
-            :key="col.columnId"
-            class="text-[10px] font-mono bg-secondary-800 px-2 py-0.5 rounded text-secondary-400"
+            v-for="(part, i) in (idx.parts ?? [])"
+            :key="i"
+            class="text-[10px] font-mono px-2 py-0.5 rounded flex items-center gap-1"
+            :class="part.type === 'column' ? 'bg-secondary-800 text-secondary-400' : 'bg-primary-500/10 border border-primary-500/20 text-primary-400 italic'"
           >
-            {{ getColumnName(col.columnId) }}<span
-              v-if="col.order === 'DESC'"
-              class="text-primary-400 ml-0.5"
-            >DESC</span>
-          </span>
-          <span
-            v-for="(expr, i) in (idx.expressions ?? [])"
-            :key="'expr-' + i"
-            class="text-[10px] font-mono bg-primary-500/10 border border-primary-500/20 px-2 py-0.5 rounded text-primary-400 italic"
-          >
-            {{ expr }}
+            {{ part.type === 'column' ? getColumnName(part.value) : part.value }}
+            <span v-if="part.order === 'DESC'" class="text-[8px] font-bold text-primary-400">DESC</span>
           </span>
         </div>
         <div
@@ -198,7 +190,7 @@ const getColumnName = (id: string) =>
         <input
           :value="newIndex.name"
           type="text"
-          class="w-full bg-secondary-950 border rounded-lg px-3 py-2 text-xs focus:outline-none transition-colors"
+          class="w-full bg-secondary-950 border rounded-lg px-3 py-2 text-xs focus:outline-none transition-colors font-mono"
           :class="indexNameError
             ? 'border-danger-500/70 text-danger-400 focus:border-danger-500'
             : 'border-secondary-800 text-secondary-200 focus:border-primary-500'"
@@ -219,7 +211,7 @@ const getColumnName = (id: string) =>
 
       <div class="space-y-1.5">
         <div class="flex items-center justify-between">
-          <label class="text-[10px] font-bold text-secondary-300 uppercase ml-1">Columns</label>
+          <label class="text-[10px] font-bold text-secondary-300 uppercase ml-1">Index Parts (Columns/Exprs)</label>
           <label class="text-[10px] text-secondary-500 ml-1 flex items-center gap-1.5">
             <input
               v-model="newIndex.type"
@@ -231,63 +223,94 @@ const getColumnName = (id: string) =>
             Unique
           </label>
         </div>
+
+        <!-- Selected Parts -->
         <div
-          class="flex flex-wrap gap-1.5 p-2 bg-secondary-950 border border-secondary-800 rounded-lg min-h-[40px]"
+          class="space-y-1.5 p-3 bg-secondary-950 border border-secondary-800 rounded-xl min-h-[50px] flex flex-col gap-2"
         >
+          <div v-if="!newIndex.parts.length" class="text-[10px] text-secondary-600 italic">Select columns or add expressions below...</div>
+          <div
+            v-for="(part, i) in newIndex.parts"
+            :key="i"
+            class="flex items-center justify-between bg-secondary-900 border border-secondary-800 p-2 rounded-lg group animate-in fade-in slide-in-from-left-2"
+          >
+            <div class="flex items-center gap-2 overflow-hidden">
+               <span class="text-[9px] font-bold text-secondary-500 opacity-50">{{ i + 1 }}</span>
+               <span 
+                class="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-colors"
+                :class="part.type === 'column' ? 'bg-primary-500/20 text-primary-400' : 'bg-success-500/20 text-success-400'"
+               >
+                 {{ part.type }}
+               </span>
+               <span class="text-[10px] font-mono text-secondary-200 truncate" :title="part.type === 'column' ? getColumnName(part.value) : part.value">
+                 {{ part.type === 'column' ? getColumnName(part.value) : part.value }}
+               </span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+               <button 
+                class="px-1.5 py-0.5 rounded bg-secondary-800 text-[8px] font-bold text-secondary-400 hover:text-white transition-colors"
+                @click="toggleOrder(i)"
+               >
+                 {{ part.order }}
+               </button>
+               <button 
+                class="text-secondary-600 hover:text-danger-500 transition-colors"
+                @click="removePart(i)"
+               >
+                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column Selector -->
+        <div class="flex flex-wrap gap-1.5 pt-1">
           <button
             v-for="col in schemaStore.selectedTable?.columns"
             :key="col.id"
-            class="px-2 py-1 rounded text-[10px] font-bold transition-all flex items-center gap-1"
+            class="px-2 py-1 rounded text-[10px] font-bold transition-all border border-transparent"
             :class="
-              newIndex.columns.some((c) => c.columnId === col.id)
-                ? 'bg-primary-500 text-white'
-                : 'bg-secondary-800 text-secondary-400 hover:text-secondary-200'
+              newIndex.parts.some((p) => p.type === 'column' && p.value === col.id)
+                ? 'bg-primary-500 text-white border-primary-400'
+                : 'bg-secondary-800 text-secondary-400 hover:bg-secondary-700'
             "
             @click="toggleColumn(col.id)"
           >
-            {{ col.name }}
-            <span
-              v-if="newIndex.columns.some((c) => c.columnId === col.id)"
-              class="text-[8px] opacity-70 cursor-pointer"
-              @click.stop="toggleColumnOrder(col.id)"
-            >{{ newIndex.columns.find((c) => c.columnId === col.id)?.order }}</span>
+            + {{ col.name }}
           </button>
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label class="text-[10px] font-bold text-secondary-300 uppercase ml-1">Expressions</label>
+        <label class="text-[10px] font-bold text-secondary-300 uppercase ml-1">New Expression</label>
         <div class="flex gap-1.5">
           <input
             v-model="newExpression"
             type="text"
-            placeholder="e.g. lower(name), date_trunc('day', created_at)"
+            placeholder="e.g. lower(email)"
             class="flex-1 bg-secondary-950 border border-secondary-800 rounded-lg px-3 py-1.5 text-[10px] focus:border-primary-500 focus:outline-none text-secondary-200 font-mono"
             @keydown.enter="addExpression"
           >
           <button
             :disabled="!newExpression.trim()"
-            class="px-3 py-1.5 bg-secondary-800 hover:bg-primary-600 rounded-lg text-[10px] font-bold text-secondary-300 hover:text-white transition-all disabled:opacity-20"
+            class="px-3 py-1.5 bg-secondary-800 hover:bg-success-600 rounded-lg text-[10px] font-bold text-secondary-300 hover:text-white transition-all disabled:opacity-20"
             @click="addExpression"
           >
-            +
+            ADD EXPR
           </button>
         </div>
-        <div
-          v-if="newIndex.expressions.length"
-          class="flex flex-wrap gap-1.5"
-        >
-          <span
-            v-for="(expr, i) in newIndex.expressions"
-            :key="i"
-            class="text-[10px] font-mono bg-primary-500/10 border border-primary-500/20 px-2 py-0.5 rounded text-primary-400 italic flex items-center gap-1"
-          >
-            {{ expr }}
-            <button
-              class="text-danger-400 hover:text-danger-300"
-              @click="removeExpression(i)"
-            >&times;</button>
-          </span>
+        
+        <!-- Injector -->
+        <div class="flex flex-wrap gap-1 mt-1 opacity-70">
+           <span class="text-[9px] text-secondary-500 flex items-center mr-1">Tap to inject:</span>
+           <button 
+             v-for="col in schemaStore.selectedTable?.columns" 
+             :key="'inj-'+col.id"
+             class="px-1.5 py-0.5 rounded bg-secondary-900 border border-secondary-800 text-[9px] text-secondary-400 hover:bg-secondary-800 hover:text-secondary-200"
+             @click="injectColumn(col.name)"
+           >
+             {{ col.name }}
+           </button>
         </div>
       </div>
 
@@ -296,18 +319,18 @@ const getColumnName = (id: string) =>
         <input
           v-model="newIndex.filter"
           type="text"
-          placeholder="e.g. status = 'active'"
-          class="w-full bg-secondary-950 border border-secondary-800 rounded-lg px-3 py-2 text-[10px] focus:border-primary-500 focus:outline-none text-secondary-200 italic"
+          placeholder="e.g. deleted_at IS NULL"
+          class="w-full bg-secondary-950 border border-secondary-800 rounded-lg px-3 py-2 text-[10px] focus:border-primary-500 focus:outline-none text-secondary-200 italic font-mono"
         >
       </div>
 
       <button
-        :disabled="(newIndex.columns.length === 0 && newIndex.expressions.length === 0) || !newIndex.name || !!indexNameError"
-        class="w-full flex items-center justify-center gap-2 p-3 bg-secondary-800 hover:bg-success-600 rounded-xl text-secondary-50 hover:text-white text-xs font-bold transition-all disabled:opacity-20 shadow-lg group active:scale-95"
+        :disabled="newIndex.parts.length === 0 || !newIndex.name || !!indexNameError"
+        class="w-full flex items-center justify-center gap-2 p-3 bg-linear-to-r from-success-600 to-success-700 hover:from-success-500 hover:to-success-600 rounded-xl text-white text-xs font-bold transition-all disabled:opacity-20 shadow-lg group active:scale-95 mt-2"
         @click="addIndex"
       >
         <svg
-          class="w-4 h-4 group-hover:scale-125 transition-transform"
+          class="w-4 h-4 group-hover:rotate-12 transition-transform"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -316,10 +339,10 @@ const getColumnName = (id: string) =>
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
           />
         </svg>
-        Register Optimizer
+        Register Index Optimizer
       </button>
     </div>
   </div>

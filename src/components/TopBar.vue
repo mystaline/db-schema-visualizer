@@ -65,31 +65,31 @@ const executePreset = (type: "blog" | "ecommerce") => {
   schemaStore.foreignKeys = [];
 
   if (type === "blog") {
-    const userId      = crypto.randomUUID();
-    const postId      = crypto.randomUUID();
-    const tagId       = crypto.randomUUID();
-    const postTagId   = crypto.randomUUID();
-    const commentId   = crypto.randomUUID();
+    const userId = crypto.randomUUID();
+    const postId = crypto.randomUUID();
+    const tagId = crypto.randomUUID();
+    const postTagId = crypto.randomUUID();
+    const commentId = crypto.randomUUID();
 
     // Pre-generate column IDs we need for FKs and indexes
-    const userPkId        = crypto.randomUUID();
-    const userEmailId     = crypto.randomUUID();
-    const userUsernameId  = crypto.randomUUID();
+    const userPkId = crypto.randomUUID();
+    const userEmailId = crypto.randomUUID();
+    const userUsernameId = crypto.randomUUID();
 
-    const postPkId        = crypto.randomUUID();
-    const postAuthorId    = crypto.randomUUID();
-    const postSlugId      = crypto.randomUUID();
-    const postStatusId    = crypto.randomUUID();
+    const postPkId = crypto.randomUUID();
+    const postAuthorId = crypto.randomUUID();
+    const postSlugId = crypto.randomUUID();
+    const postStatusId = crypto.randomUUID();
     const postPublishedId = crypto.randomUUID();
 
-    const tagPkId         = crypto.randomUUID();
-    const tagSlugId       = crypto.randomUUID();
+    const tagPkId = crypto.randomUUID();
+    const tagSlugId = crypto.randomUUID();
 
-    const postTagPostId   = crypto.randomUUID();
-    const postTagTagId    = crypto.randomUUID();
+    const postTagPostId = crypto.randomUUID();
+    const postTagTagId = crypto.randomUUID();
 
-    const commentPkId     = crypto.randomUUID();
-    const commentPostId   = crypto.randomUUID();
+    const commentPkId = crypto.randomUUID();
+    const commentPostId = crypto.randomUUID();
     const commentAuthorId = crypto.randomUUID();
     const commentParentId = crypto.randomUUID();
 
@@ -99,18 +99,84 @@ const executePreset = (type: "blog" | "ecommerce") => {
       x: 80,
       y: 180,
       columns: [
-        { id: userPkId,       name: "id",            type: "uuid",      isPrimaryKey: true,  isNullable: false, isUnique: true,  defaultValue: "gen_random_uuid()" },
-        { id: userEmailId,    name: "email",          type: "varchar",   isPrimaryKey: false, isNullable: false, isUnique: true,  defaultValue: null },
-        { id: userUsernameId, name: "username",       type: "varchar",   isPrimaryKey: false, isNullable: false, isUnique: true,  defaultValue: null },
-        { id: crypto.randomUUID(), name: "password_hash", type: "varchar", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: crypto.randomUUID(), name: "role",         type: "varchar",   isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "'author'" },
-        { id: crypto.randomUUID(), name: "created_at",   type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
+        {
+          id: userPkId,
+          name: "id",
+          type: "uuid",
+          isPrimaryKey: true,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: "gen_random_uuid()",
+        },
+        {
+          id: userEmailId,
+          name: "email",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: null,
+        },
+        {
+          id: userUsernameId,
+          name: "username",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "password_hash",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "role",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: "'author'",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "created_at",
+          type: "timestamptz",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: "now()",
+        },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_users_email",    type: "normal", columns: [{ columnId: userEmailId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_users_username", type: "normal", columns: [{ columnId: userUsernameId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_users_email",
+          type: "normal",
+          parts: [{ type: "column", value: userEmailId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_users_username",
+          type: "normal",
+          parts: [{ type: "column", value: userUsernameId, order: "ASC" }],
+          filter: "",
+        },
       ],
-      checkConstraints: [{ id: crypto.randomUUID(), name: "chk_users_role", expression: "role IN ('admin', 'author', 'reader')" }],
+      checkConstraints: [
+        {
+          id: crypto.randomUUID(),
+          name: "chk_users_role",
+          expression: "role IN ('admin', 'author', 'reader')",
+        },
+      ],
     });
 
     schemaStore.tables.push({
@@ -119,21 +185,109 @@ const executePreset = (type: "blog" | "ecommerce") => {
       x: 480,
       y: 80,
       columns: [
-        { id: postPkId,        name: "id",           type: "uuid",        isPrimaryKey: true,  isNullable: false, isUnique: true,  defaultValue: "gen_random_uuid()" },
-        { id: postAuthorId,    name: "author_id",    type: "uuid",        isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: postSlugId,      name: "slug",         type: "varchar",     isPrimaryKey: false, isNullable: false, isUnique: true,  defaultValue: null },
-        { id: postStatusId,    name: "status",       type: "varchar",     isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "'draft'" },
-        { id: crypto.randomUUID(), name: "title",    type: "varchar",     isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: crypto.randomUUID(), name: "content",  type: "text",        isPrimaryKey: false, isNullable: true,  isUnique: false, defaultValue: null },
-        { id: postPublishedId, name: "published_at", type: "timestamptz", isPrimaryKey: false, isNullable: true,  isUnique: false, defaultValue: null },
-        { id: crypto.randomUUID(), name: "created_at", type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
+        {
+          id: postPkId,
+          name: "id",
+          type: "uuid",
+          isPrimaryKey: true,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: "gen_random_uuid()",
+        },
+        {
+          id: postAuthorId,
+          name: "author_id",
+          type: "uuid",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: postSlugId,
+          name: "slug",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: null,
+        },
+        {
+          id: postStatusId,
+          name: "status",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: "'draft'",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "title",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "content",
+          type: "text",
+          isPrimaryKey: false,
+          isNullable: true,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: postPublishedId,
+          name: "published_at",
+          type: "timestamptz",
+          isPrimaryKey: false,
+          isNullable: true,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "created_at",
+          type: "timestamptz",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: "now()",
+        },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_posts_author_id",    type: "normal", columns: [{ columnId: postAuthorId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "unq_posts_slug",         type: "unique", columns: [{ columnId: postSlugId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_posts_published_at", type: "normal", columns: [{ columnId: postPublishedId, order: "ASC" }], expressions: [], filter: "status = 'published'" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_posts_author_id",
+          type: "normal",
+          parts: [{ type: "column", value: postAuthorId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "unq_posts_slug",
+          type: "unique",
+          parts: [{ type: "column", value: postSlugId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_posts_published_at",
+          type: "normal",
+          parts: [{ type: "column", value: postPublishedId, order: "ASC" }],
+          filter: "status = 'published'",
+        },
       ],
-      checkConstraints: [{ id: crypto.randomUUID(), name: "chk_posts_status", expression: "status IN ('draft', 'published', 'archived')" }],
+      checkConstraints: [
+        {
+          id: crypto.randomUUID(),
+          name: "chk_posts_status",
+          expression: "status IN ('draft', 'published', 'archived')",
+        },
+      ],
     });
 
     schemaStore.tables.push({
@@ -142,12 +296,42 @@ const executePreset = (type: "blog" | "ecommerce") => {
       x: 480,
       y: 500,
       columns: [
-        { id: tagPkId,   name: "id",   type: "uuid",    isPrimaryKey: true,  isNullable: false, isUnique: true,  defaultValue: "gen_random_uuid()" },
-        { id: tagSlugId, name: "slug", type: "varchar", isPrimaryKey: false, isNullable: false, isUnique: true,  defaultValue: null },
-        { id: crypto.randomUUID(), name: "name", type: "varchar", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        {
+          id: tagPkId,
+          name: "id",
+          type: "uuid",
+          isPrimaryKey: true,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: "gen_random_uuid()",
+        },
+        {
+          id: tagSlugId,
+          name: "slug",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "name",
+          type: "varchar",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: null,
+        },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "unq_tags_slug", type: "unique", columns: [{ columnId: tagSlugId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "unq_tags_slug",
+          type: "unique",
+          parts: [{ type: "column", value: tagSlugId, order: "ASC" }],
+          filter: "",
+        },
       ],
       checkConstraints: [],
     });
@@ -158,12 +342,40 @@ const executePreset = (type: "blog" | "ecommerce") => {
       x: 860,
       y: 280,
       columns: [
-        { id: postTagPostId, name: "post_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: postTagTagId,  name: "tag_id",  type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        {
+          id: postTagPostId,
+          name: "post_id",
+          type: "uuid",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: postTagTagId,
+          name: "tag_id",
+          type: "uuid",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_post_tags_post_id", type: "normal", columns: [{ columnId: postTagPostId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_post_tags_tag_id",  type: "normal", columns: [{ columnId: postTagTagId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_post_tags_post_id",
+          type: "normal",
+          parts: [{ type: "column", value: postTagPostId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_post_tags_tag_id",
+          type: "normal",
+          parts: [{ type: "column", value: postTagTagId, order: "ASC" }],
+          filter: "",
+        },
       ],
       checkConstraints: [],
     });
@@ -174,27 +386,129 @@ const executePreset = (type: "blog" | "ecommerce") => {
       x: 860,
       y: 520,
       columns: [
-        { id: commentPkId,     name: "id",        type: "uuid",        isPrimaryKey: true,  isNullable: false, isUnique: true,  defaultValue: "gen_random_uuid()" },
-        { id: commentPostId,   name: "post_id",   type: "uuid",        isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: commentAuthorId, name: "author_id", type: "uuid",        isPrimaryKey: false, isNullable: true,  isUnique: false, defaultValue: null },
-        { id: commentParentId, name: "parent_id", type: "uuid",        isPrimaryKey: false, isNullable: true,  isUnique: false, defaultValue: null },
-        { id: crypto.randomUUID(), name: "content",    type: "text",   isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: crypto.randomUUID(), name: "created_at", type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
+        {
+          id: commentPkId,
+          name: "id",
+          type: "uuid",
+          isPrimaryKey: true,
+          isNullable: false,
+          isUnique: true,
+          defaultValue: "gen_random_uuid()",
+        },
+        {
+          id: commentPostId,
+          name: "post_id",
+          type: "uuid",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: commentAuthorId,
+          name: "author_id",
+          type: "uuid",
+          isPrimaryKey: false,
+          isNullable: true,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: commentParentId,
+          name: "parent_id",
+          type: "uuid",
+          isPrimaryKey: false,
+          isNullable: true,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "content",
+          type: "text",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: null,
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "created_at",
+          type: "timestamptz",
+          isPrimaryKey: false,
+          isNullable: false,
+          isUnique: false,
+          defaultValue: "now()",
+        },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_comments_post_id",   type: "normal", columns: [{ columnId: commentPostId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_comments_author_id", type: "normal", columns: [{ columnId: commentAuthorId, order: "ASC" }], expressions: [], filter: "author_id IS NOT NULL" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_comments_post_id",
+          type: "normal",
+          parts: [{ type: "column", value: commentPostId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_comments_author_id",
+          type: "normal",
+          parts: [{ type: "column", value: commentAuthorId, order: "ASC" }],
+          filter: "author_id IS NOT NULL",
+        },
       ],
       checkConstraints: [],
     });
 
     // FKs
-    schemaStore.addForeignKey({ sourceTableId: postId,    sourceColumnId: postAuthorId,    targetTableId: userId,  targetColumnId: userPkId,    onDelete: "CASCADE",   onUpdate: "CASCADE" });
-    schemaStore.addForeignKey({ sourceTableId: postTagId, sourceColumnId: postTagPostId,   targetTableId: postId,  targetColumnId: postPkId,    onDelete: "CASCADE",   onUpdate: "CASCADE" });
-    schemaStore.addForeignKey({ sourceTableId: postTagId, sourceColumnId: postTagTagId,    targetTableId: tagId,   targetColumnId: tagPkId,     onDelete: "CASCADE",   onUpdate: "CASCADE" });
-    schemaStore.addForeignKey({ sourceTableId: commentId, sourceColumnId: commentPostId,   targetTableId: postId,  targetColumnId: postPkId,    onDelete: "CASCADE",   onUpdate: "CASCADE" });
-    schemaStore.addForeignKey({ sourceTableId: commentId, sourceColumnId: commentAuthorId, targetTableId: userId,  targetColumnId: userPkId,    onDelete: "SET NULL",  onUpdate: "CASCADE" });
-    schemaStore.addForeignKey({ sourceTableId: commentId, sourceColumnId: commentParentId, targetTableId: commentId, targetColumnId: commentPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+    schemaStore.addForeignKey({
+      sourceTableId: postId,
+      sourceColumnId: postAuthorId,
+      targetTableId: userId,
+      targetColumnId: userPkId,
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    });
+    schemaStore.addForeignKey({
+      sourceTableId: postTagId,
+      sourceColumnId: postTagPostId,
+      targetTableId: postId,
+      targetColumnId: postPkId,
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    });
+    schemaStore.addForeignKey({
+      sourceTableId: postTagId,
+      sourceColumnId: postTagTagId,
+      targetTableId: tagId,
+      targetColumnId: tagPkId,
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    });
+    schemaStore.addForeignKey({
+      sourceTableId: commentId,
+      sourceColumnId: commentPostId,
+      targetTableId: postId,
+      targetColumnId: postPkId,
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    });
+    schemaStore.addForeignKey({
+      sourceTableId: commentId,
+      sourceColumnId: commentAuthorId,
+      targetTableId: userId,
+      targetColumnId: userPkId,
+      onDelete: "SET NULL",
+      onUpdate: "CASCADE",
+    });
+    schemaStore.addForeignKey({
+      sourceTableId: commentId,
+      sourceColumnId: commentParentId,
+      targetTableId: commentId,
+      targetColumnId: commentPkId,
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    });
   }
 
   if (type === "ecommerce") {
@@ -249,7 +563,13 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "unq_customers_email", type: "unique", columns: [{ columnId: customerEmailColId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "unq_customers_email",
+          type: "unique",
+          parts: [{ type: "column", value: customerEmailColId, order: "ASC" }],
+          filter: "",
+        },
       ],
       checkConstraints: [],
     });
@@ -298,11 +618,25 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_products_name", type: "normal", columns: [{ columnId: productNameColId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_products_name",
+          type: "normal",
+          parts: [{ type: "column", value: productNameColId, order: "ASC" }],
+          filter: "",
+        },
       ],
       checkConstraints: [
-        { id: crypto.randomUUID(), name: "chk_products_price", expression: "price > 0" },
-        { id: crypto.randomUUID(), name: "chk_products_stock", expression: "stock >= 0" }
+        {
+          id: crypto.randomUUID(),
+          name: "chk_products_price",
+          expression: "price > 0",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "chk_products_stock",
+          expression: "stock >= 0",
+        },
       ],
     });
 
@@ -350,8 +684,20 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_orders_customer_id", type: "normal", columns: [{ columnId: orderCustomerColId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_orders_status", type: "normal", columns: [{ columnId: orderStatusColId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_orders_customer_id",
+          type: "normal",
+          parts: [{ type: "column", value: orderCustomerColId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_orders_status",
+          type: "normal",
+          parts: [{ type: "column", value: orderStatusColId, order: "ASC" }],
+          filter: "",
+        },
       ],
       checkConstraints: [],
     });
@@ -400,10 +746,28 @@ const executePreset = (type: "blog" | "ecommerce") => {
         },
       ],
       indexes: [
-        { id: crypto.randomUUID(), name: "idx_order_items_order_id", type: "normal", columns: [{ columnId: orderItemOrderColId, order: "ASC" }], expressions: [], filter: "" },
-        { id: crypto.randomUUID(), name: "idx_order_items_product_id", type: "normal", columns: [{ columnId: orderItemProductColId, order: "ASC" }], expressions: [], filter: "" },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_order_items_order_id",
+          type: "normal",
+          parts: [{ type: "column", value: orderItemOrderColId, order: "ASC" }],
+          filter: "",
+        },
+        {
+          id: crypto.randomUUID(),
+          name: "idx_order_items_product_id",
+          type: "normal",
+          parts: [{ type: "column", value: orderItemProductColId, order: "ASC" }],
+          filter: "",
+        },
       ],
-      checkConstraints: [{ id: crypto.randomUUID(), name: "chk_order_items_quantity", expression: "quantity > 0" }],
+      checkConstraints: [
+        {
+          id: crypto.randomUUID(),
+          name: "chk_order_items_quantity",
+          expression: "quantity > 0",
+        },
+      ],
     });
 
     schemaStore.addForeignKey({
@@ -484,7 +848,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
       >
         <span
           class="text-[10px] font-bold text-secondary-400 uppercase tracking-widest"
-        >Presets:</span>
+          >Presets:</span
+        >
         <button
           class="text-xs font-bold transition-colors uppercase tracking-tight px-2 py-1 rounded-lg"
           :class="
@@ -565,10 +930,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
       <div class="w-px h-6 bg-secondary-800 mx-1" />
 
       <!-- Share: dropdown (full mode) or single read-only button (read mode) -->
-      <div
-        ref="shareMenuRef"
-        class="relative"
-      >
+      <div ref="shareMenuRef" class="relative">
         <!-- Full mode: dropdown with access level choice -->
         <template v-if="schemaStore.viewMode === 'full'">
           <button
@@ -596,7 +958,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
             </div>
             <span
               class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50 transition-colors"
-            >Share URL</span>
+              >Share URL</span
+            >
           </button>
 
           <Transition
@@ -695,7 +1058,8 @@ const executePreset = (type: "blog" | "ecommerce") => {
           </div>
           <span
             class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50 transition-colors"
-          >Share Read-Only</span>
+            >Share Read-Only</span
+          >
         </button>
       </div>
     </div>
@@ -773,9 +1137,6 @@ const executePreset = (type: "blog" | "ecommerce") => {
       </button>
     </div>
 
-    <SqlExportModal
-      :is-open="isExportOpen"
-      @close="isExportOpen = false"
-    />
+    <SqlExportModal :is-open="isExportOpen" @close="isExportOpen = false" />
   </header>
 </template>

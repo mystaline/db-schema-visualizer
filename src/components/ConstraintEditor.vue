@@ -15,17 +15,12 @@ watch(
   () => [newConstraint.value.expression, schemaStore.selectedTable?.name],
   () => {
     if (schemaStore.selectedTable && newConstraint.value.expression.trim()) {
-      // Create a snippet from the expression for the name (letters/numbers/underscores only)
-      const snippet = newConstraint.value.expression
-        .replace(/[^a-zA-Z0-9_]/g, "")
-        .slice(0, 15)
-        .toLowerCase();
-      
-      if (snippet) {
-         newConstraint.value.name = `chk_${schemaStore.selectedTable.name}_${snippet}`;
-      }
+      newConstraint.value.name = schemaStore.getConstraintName(
+        schemaStore.selectedTable,
+        newConstraint.value.expression
+      );
     } else {
-      newConstraint.value.name = '';
+      newConstraint.value.name = "";
     }
   }
 );

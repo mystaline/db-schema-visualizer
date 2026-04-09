@@ -10,7 +10,7 @@ A browser-based PostgreSQL schema designer. Build entity-relationship diagrams v
 ## Features
 
 - **Canvas** — pan, zoom, drag tables freely; FK relations drawn as SVG lines
-- **Column editor** — name, type (full PostgreSQL type list), PK (composite supported), nullable, unique, default value; live identifier validation; drag-and-drop reorder
+- **Column editor** — name, type (full PostgreSQL type list), Primary Key (single-column), nullable, unique, default value; live identifier validation; drag-and-drop reorder
 - **Foreign key editor** — outgoing and incoming references per table, ON DELETE/UPDATE actions; in-place editing of existing FKs
 - **Index editor** — normal and unique indexes, composite columns, per-column ASC/DESC ordering, expression indexes, partial `WHERE` filter; auto-generated names
 - **Inline rename** — double-click table name on canvas to rename

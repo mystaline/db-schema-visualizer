@@ -23,9 +23,12 @@ const generatedSql = computed(() => {
   schemaStore.tables.forEach((table) => {
     // Table notes as SQL comments
     if (table.notes?.trim()) {
-      table.notes.trim().split('\n').forEach((line) => {
-        sql += `-- ${line}\n`;
-      });
+      table.notes
+        .trim()
+        .split("\n")
+        .forEach((line) => {
+          sql += `-- ${line}\n`;
+        });
     }
 
     sql += `CREATE TABLE ${table.name} (\n`;
@@ -46,7 +49,9 @@ const generatedSql = computed(() => {
     }
 
     table.checkConstraints.forEach((constraint) => {
-      lines.push(`  CONSTRAINT ${constraint.name} CHECK (${constraint.expression})`);
+      lines.push(
+        `  CONSTRAINT ${constraint.name} CHECK (${constraint.expression})`,
+      );
     });
 
     sql += lines.join(",\n");
@@ -61,18 +66,21 @@ const generatedSql = computed(() => {
     const targetTable = schemaStore.tables.find(
       (t) => t.id === fk.targetTableId,
     );
-    const sourceCol = sourceTable?.columns.find(
-      (c) => c.id === fk.sourceColumnId,
-    );
-    const targetCol = targetTable?.columns.find(
-      (c) => c.id === fk.targetColumnId,
-    );
 
-    if (sourceTable && targetTable && sourceCol && targetCol) {
-      sql += `ALTER TABLE ${sourceTable.name}\n`;
-      sql += `  ADD CONSTRAINT fk_${sourceTable.name}_${sourceCol.name}\n`;
-      sql += `  FOREIGN KEY (${sourceCol.name}) REFERENCES ${targetTable.name} (${targetCol.name})\n`;
-      sql += `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};\n\n`;
+    if (sourceTable && targetTable) {
+      const sourceCol = sourceTable.columns.find(
+        (c) => c.id === fk.sourceColumnId,
+      );
+      const targetCol = targetTable.columns.find(
+        (c) => c.id === fk.targetColumnId,
+      );
+
+      if (sourceCol && targetCol) {
+        sql += `ALTER TABLE ${sourceTable.name}\n`;
+        sql += `  ADD CONSTRAINT fk_${sourceTable.name}_${sourceCol.name}\n`;
+        sql += `  FOREIGN KEY (${sourceCol.name}) REFERENCES ${targetTable.name} (${targetCol.name})\n`;
+        sql += `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};\n\n`;
+      }
     }
   });
 
@@ -80,20 +88,30 @@ const generatedSql = computed(() => {
   schemaStore.tables.forEach((table) => {
     table.indexes.forEach((idx) => {
       const parts: string[] = [];
-      // Column-based entries with ordering
-      for (const col of (idx.columns ?? [])) {
-        const name = table.columns.find((c) => c.id === col.columnId)?.name;
-        if (name) parts.push(col.order === "DESC" ? `${name} DESC` : name);
-      }
-      // Expression entries
-      for (const expr of (idx.expressions ?? [])) {
-        if (expr.trim()) parts.push(expr.trim());
-      }
 
-      const uniqueStr = idx.type === "unique" ? " UNIQUE" : "";
-      const whereStr = idx.filter ? ` WHERE ${idx.filter}` : "";
+      (idx.parts ?? []).forEach((part) => {
+        if (part.type === "column") {
+          const name = table.columns.find((c) => c.id === part.value)?.name;
+          if (name) {
+            parts.push(part.order === "DESC" ? `${name} DESC` : name);
+          }
+        } else {
+          // Expression
+          if (part.value.trim()) {
+            parts.push(
+              part.order === "DESC"
+                ? `(${part.value.trim()}) DESC`
+                : part.value.trim(),
+            );
+          }
+        }
+      });
 
-      sql += `CREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};\n`;
+      if (parts.length > 0) {
+        const uniqueStr = idx.type === "unique" ? " UNIQUE" : "";
+        const whereStr = idx.filter ? ` WHERE ${idx.filter}` : "";
+        sql += `CREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};\n`;
+      }
     });
   });
 

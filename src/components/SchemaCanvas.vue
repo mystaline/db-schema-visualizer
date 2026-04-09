@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSchemaStore } from '../stores/schemaStore'
+import { useHistory } from '../composables/useHistory'
 import TableNode from './TableNode.vue'
 import RelationLines from './RelationLines.vue'
 
@@ -9,14 +10,18 @@ const transform = computed(() => schemaStore.canvasTransform)
 const isPanning = ref(false)
 const panOffset = ref({ x: 0, y: 0 })
 
+const { clearHistory } = useHistory()
+
 // Hydrate on load: URL > localStorage > fresh
 const hydrateFromUrl = async () => {
   const hash = window.location.hash
   if (hash.startsWith('#data=')) {
     await schemaStore.loadFromShareableData(hash.slice('#data='.length))
+    clearHistory()
     return
   }
   schemaStore.loadFromLocalStorage()
+  clearHistory()
 }
 
 const pendingDeleteTable = ref(false)
@@ -76,16 +81,16 @@ const handleWheel = (e: WheelEvent) => {
   e.preventDefault()
   const zoomFactor = 0.05
   const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor
-  const newScale = Math.min(Math.max(0.2, schemaStore.canvasTransform.scale + delta), 2)
-  schemaStore.canvasTransform.scale = newScale
+  const newScale = Math.min(Math.max(0.2, schemaStore.canvasTransform.k + delta), 2)
+  schemaStore.canvasTransform.k = newScale
 }
 
 const zoomToFit = () => {
-  schemaStore.canvasTransform = { x: 0, y: 0, scale: 1 }
+  schemaStore.canvasTransform = { x: 0, y: 0, k: 1 }
 }
 
 const canvasStyle = computed(() => ({
-  transform: `translate(${transform.value.x}px, ${transform.value.y}px) scale(${transform.value.scale})`,
+  transform: `translate(${transform.value.x}px, ${transform.value.y}px) scale(${transform.value.k})`,
   transformOrigin: '0 0'
 }))
 </script>
@@ -105,7 +110,7 @@ const canvasStyle = computed(() => ({
       :style="{
         backgroundImage: 'radial-gradient(circle at 1px 1px, var(--dot-color) 1px, transparent 0)',
         backgroundPosition: `${transform.x}px ${transform.y}px`,
-        backgroundSize: `${40 * transform.scale}px ${40 * transform.scale}px`
+        backgroundSize: `${40 * transform.k}px ${40 * transform.k}px`
       }"
     />
     
@@ -122,7 +127,7 @@ const canvasStyle = computed(() => ({
         v-for="table in schemaStore.tables" 
         :key="table.id" 
         :table="table"
-        :scale="transform.scale"
+        :scale="transform.k"
       />
 
       <!-- Center Logo if empty -->
@@ -163,13 +168,13 @@ const canvasStyle = computed(() => ({
     <div class="absolute bottom-10 right-10 pointer-events-auto p-2 bg-secondary-900/60 backdrop-blur-md shadow-2xl border border-secondary-800 rounded-2xl flex gap-1 z-40">
       <button
         class="w-10 h-10 flex items-center justify-center bg-secondary-800 hover:bg-primary-600 rounded-lg shadow-sm font-bold text-lg transition-colors text-secondary-50 hover:text-white"
-        @click="schemaStore.canvasTransform.scale = Math.max(0.2, schemaStore.canvasTransform.scale - 0.1)"
+        @click="schemaStore.canvasTransform.k = Math.max(0.2, schemaStore.canvasTransform.k - 0.1)"
       >
         -
       </button>
       <button
         class="w-10 h-10 flex items-center justify-center bg-secondary-800 hover:bg-primary-600 rounded-lg shadow-sm font-bold text-lg transition-colors text-secondary-50 hover:text-white"
-        @click="schemaStore.canvasTransform.scale = Math.min(2, schemaStore.canvasTransform.scale + 0.1)"
+        @click="schemaStore.canvasTransform.k = Math.min(2, schemaStore.canvasTransform.k + 0.1)"
       >
         +
       </button>
@@ -180,7 +185,7 @@ const canvasStyle = computed(() => ({
         Fit View
       </button>
       <div class="px-4 h-10 flex items-center justify-center bg-secondary-950/50 rounded-lg border border-secondary-800/50 text-[10px] font-mono font-bold text-secondary-300 uppercase tracking-tighter">
-        SCALE: {{ Math.round(transform.scale * 100) }}%
+        SCALE: {{ Math.round(transform.k * 100) }}%
       </div>
     </div>
   </div>
