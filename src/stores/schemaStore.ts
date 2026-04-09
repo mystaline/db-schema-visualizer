@@ -29,6 +29,12 @@ export interface Index {
   filter: string;
 }
 
+export interface CheckConstraint {
+  id: string;
+  name: string;
+  expression: string;
+}
+
 export interface ForeignKey {
   id: string;
   sourceTableId: string;
@@ -46,7 +52,7 @@ export interface Table {
   y: number;
   columns: Column[];
   indexes: Index[];
-  checkConstraints: string[];
+  checkConstraints: CheckConstraint[];
   notes?: string;
 }
 
@@ -104,20 +110,15 @@ export const useSchemaStore = defineStore("schema", () => {
     if (!table) return;
 
     const columnIndex = table.columns.findIndex((c) => c.id === columnId);
-    const prevPKIndex = table.columns.findIndex((c) => c.isPrimaryKey);
     if (columnIndex !== -1) {
       table.columns[columnIndex] = {
         ...table.columns[columnIndex],
         ...updates,
       };
 
-      // Re-enforce PK invariants unconditionally after merge
+      // PK columns must never be nullable
       if (table.columns[columnIndex].isPrimaryKey) {
         table.columns[columnIndex].isNullable = false;
-
-        if (prevPKIndex !== -1 && prevPKIndex !== columnIndex) {
-          table.columns[prevPKIndex].isPrimaryKey = false;
-        }
       }
     }
   };

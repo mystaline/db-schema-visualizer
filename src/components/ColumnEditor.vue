@@ -14,7 +14,7 @@ const IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const invalidColumnIds = computed(() => {
   const cols = schemaStore.selectedTable?.columns ?? [];
   const invalid = new Set<string>();
-  const seen = new Map<string, string>(); // lowercase name → first id
+  const seen = new Map<string, string>(); // lowercase name -> first id
   for (const col of cols) {
     const key = col.name.toLowerCase();
     if (!col.name || !IDENTIFIER_RE.test(col.name)) {
@@ -129,7 +129,10 @@ const requestDelete = (columnId: string) => {
 
 const confirmDelete = () => {
   if (pendingDeleteId.value && schemaStore.selectedTableId) {
-    schemaStore.removeColumn(schemaStore.selectedTableId, pendingDeleteId.value);
+    schemaStore.removeColumn(
+      schemaStore.selectedTableId,
+      pendingDeleteId.value,
+    );
     pendingDeleteId.value = null;
   }
 };
@@ -147,7 +150,11 @@ const onDragOver = (idx: number, e: DragEvent) => {
 };
 const onDrop = (idx: number) => {
   if (dragIndex.value !== null && schemaStore.selectedTableId) {
-    schemaStore.reorderColumns(schemaStore.selectedTableId, dragIndex.value, idx);
+    schemaStore.reorderColumns(
+      schemaStore.selectedTableId,
+      dragIndex.value,
+      idx,
+    );
   }
   dragIndex.value = null;
   dragOverIndex.value = null;
@@ -166,7 +173,9 @@ const onDragEnd = () => {
       >
         Entity Schema
       </h4>
-      <span class="text-xs text-secondary-400 font-medium">DEFINED COLUMNS: {{ schemaStore.selectedTable?.columns.length }}</span>
+      <span class="text-xs text-secondary-400 font-medium"
+        >DEFINED COLUMNS: {{ schemaStore.selectedTable?.columns.length }}</span
+      >
     </div>
 
     <!-- Column Headers: 5-col grid (delete is absolute overlay, not in grid) -->
@@ -180,7 +189,8 @@ const onDragEnd = () => {
       <div class="text-center">UNQ</div>
     </div>
     <p class="text-[10px] text-secondary-400 px-2 flex items-center gap-1.5">
-      <span class="inline-block w-1 h-3 bg-success-500 rounded-full"></span> has default value
+      <span class="inline-block w-1 h-3 bg-success-500 rounded-full" /> has
+      default value
     </p>
 
     <!-- Column Rows -->
@@ -192,8 +202,10 @@ const onDragEnd = () => {
           invalidColumnIds.has(col.id)
             ? 'border-danger-500/50 hover:border-danger-500/70'
             : 'border-secondary-800/50 hover:border-secondary-700/50',
-          dragOverIndex === colIdx && dragIndex !== colIdx ? 'border-t-primary-500 border-t-2' : '',
-          col.defaultValue ? 'border-l-success-500/60 border-l-2' : ''
+          dragOverIndex === colIdx && dragIndex !== colIdx
+            ? 'border-t-primary-500 border-t-2'
+            : '',
+          col.defaultValue ? 'border-l-success-500/60 border-l-2' : '',
         ]"
         class="group relative bg-secondary-900/40 rounded-lg border transition-colors overflow-hidden"
         :draggable="schemaStore.viewMode === 'full'"
@@ -206,27 +218,50 @@ const onDragEnd = () => {
         <div
           v-if="pendingDeleteId !== col.id"
           class="grid items-center px-2 py-1.5"
-          :class="schemaStore.viewMode === 'full'
-            ? 'grid-cols-[16px_1fr_80px_28px_28px_28px] gap-1'
-            : 'grid-cols-[1fr_80px_28px_28px_28px] gap-1.5'"
+          :class="
+            schemaStore.viewMode === 'full'
+              ? 'grid-cols-[16px_1fr_80px_28px_28px_28px] gap-1'
+              : 'grid-cols-[1fr_80px_28px_28px_28px] gap-1.5'
+          "
         >
           <!-- Drag Handle (edit mode only) -->
-          <div v-if="schemaStore.viewMode === 'full'" class="flex items-center justify-center cursor-grab text-secondary-600 hover:text-secondary-400">
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+          <div
+            v-if="schemaStore.viewMode === 'full'"
+            class="flex items-center justify-center cursor-grab text-secondary-600 hover:text-secondary-400"
+          >
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="9" cy="6" r="1.5" />
+              <circle cx="15" cy="6" r="1.5" />
+              <circle cx="9" cy="12" r="1.5" />
+              <circle cx="15" cy="12" r="1.5" />
+              <circle cx="9" cy="18" r="1.5" />
+              <circle cx="15" cy="18" r="1.5" />
+            </svg>
           </div>
           <!-- Name Input -->
           <input
             ref="nameInputs"
             :value="col.name"
             class="min-w-0 w-full bg-transparent text-sm focus:outline-none transition-colors placeholder:text-secondary-500"
-            :class="invalidColumnIds.has(col.id) ? 'text-danger-400 focus:text-danger-300' : 'text-secondary-100 focus:text-primary-400'"
+            :class="
+              invalidColumnIds.has(col.id)
+                ? 'text-danger-400 focus:text-danger-300'
+                : 'text-secondary-100 focus:text-primary-400'
+            "
             placeholder="col_name"
             :aria-label="`Column name: ${col.name}`"
             :readonly="schemaStore.viewMode === 'read'"
-            :title="invalidColumnIds.has(col.id) ? 'Invalid: use letters, digits, underscores only; no duplicates' : undefined"
+            :title="
+              invalidColumnIds.has(col.id)
+                ? 'Invalid: use letters, digits, underscores only; no duplicates'
+                : undefined
+            "
             @click.stop
-            @input="(e) => updateColumnName(col.id, (e.target as HTMLInputElement).value)"
-          >
+            @input="
+              (e) =>
+                updateColumnName(col.id, (e.target as HTMLInputElement).value)
+            "
+          />
 
           <!-- Type Select -->
           <select
@@ -247,11 +282,7 @@ const onDragEnd = () => {
               :key="group.group"
               :label="group.group"
             >
-              <option
-                v-for="type in group.types"
-                :key="type"
-                :value="type"
-              >
+              <option v-for="type in group.types" :key="type" :value="type">
                 {{ type }}
               </option>
             </optgroup>
@@ -271,7 +302,7 @@ const onDragEnd = () => {
                     isPrimaryKey: (e.target as HTMLInputElement).checked,
                   })
               "
-            >
+            />
           </div>
 
           <!-- Nullable Toggle -->
@@ -288,7 +319,7 @@ const onDragEnd = () => {
                     isNullable: (e.target as HTMLInputElement).checked,
                   })
               "
-            >
+            />
           </div>
 
           <!-- Unique Toggle -->
@@ -305,7 +336,7 @@ const onDragEnd = () => {
                     isUnique: (e.target as HTMLInputElement).checked,
                   })
               "
-            >
+            />
           </div>
         </div>
 
@@ -315,7 +346,10 @@ const onDragEnd = () => {
           class="flex items-center justify-between px-3 py-2 bg-danger-500/5 border-danger-500/20"
           role="alert"
         >
-          <span class="text-xs text-danger-400 font-medium">Delete <span class="font-bold text-danger-300">{{ col.name }}</span>?</span>
+          <span class="text-xs text-danger-400 font-medium"
+            >Delete <span class="font-bold text-danger-300">{{ col.name }}</span
+            >?</span
+          >
           <div class="flex gap-2">
             <button
               class="px-3 py-1 text-[10px] font-bold bg-danger-500/20 hover:bg-danger-500/40 text-danger-300 rounded-lg transition-colors focus:outline-none focus:ring-1 focus:ring-danger-500"
@@ -338,23 +372,39 @@ const onDragEnd = () => {
           class="px-2 pb-1.5 flex items-center gap-1.5"
           @click.stop
         >
-          <span class="text-[9px] font-bold text-secondary-500 uppercase shrink-0">DEFAULT</span>
+          <span
+            class="text-[9px] font-bold text-secondary-500 uppercase shrink-0"
+            >DEFAULT</span
+          >
           <input
             :value="col.defaultValue ?? ''"
             type="text"
             placeholder="e.g. now(), gen_random_uuid(), 'active'"
             class="flex-1 min-w-0 bg-secondary-950 border border-secondary-800 rounded px-2 py-0.5 text-[10px] text-secondary-200 focus:border-primary-500 focus:outline-none transition-colors"
             :readonly="schemaStore.viewMode === 'read'"
-            @input="(e) => updateColumn(col.id, { defaultValue: (e.target as HTMLInputElement).value || null })"
-          >
+            @input="
+              (e) =>
+                updateColumn(col.id, {
+                  defaultValue: (e.target as HTMLInputElement).value || null,
+                })
+            "
+          />
           <button
             v-if="schemaStore.viewMode === 'full'"
             class="shrink-0 text-secondary-400 hover:text-danger-500 transition-colors p-1 rounded cursor-pointer"
             :aria-label="`Delete column ${col.name}`"
             @click="requestDelete(col.id)"
           >
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
               />
             </svg>

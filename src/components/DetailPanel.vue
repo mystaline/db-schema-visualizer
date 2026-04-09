@@ -13,8 +13,16 @@ const tabs = [
   { id: 'columns', name: 'Columns' },
   { id: 'relations', name: 'Foreign Keys' },
   { id: 'indexes', name: 'Indexes' },
-  { id: 'constraints', name: 'Constraints' }
+  { id: 'constraints', name: 'Constraints' },
+  { id: 'notes', name: 'Notes' }
 ]
+
+const updateNotes = (e: Event) => {
+  if (!schemaStore.selectedTableId) return
+  schemaStore.updateTable(schemaStore.selectedTableId, {
+    notes: (e.target as HTMLTextAreaElement).value
+  })
+}
 </script>
 
 <template>
@@ -69,6 +77,30 @@ const tabs = [
         <ForeignKeyEditor v-else-if="activeTab === 'relations'" />
         <IndexEditor v-else-if="activeTab === 'indexes'" />
         <ConstraintEditor v-else-if="activeTab === 'constraints'" />
+
+        <!-- Notes Tab -->
+        <div
+          v-else-if="activeTab === 'notes'"
+          class="space-y-4"
+        >
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-secondary-400 uppercase tracking-widest">
+              Table Notes
+            </h4>
+          </div>
+          <textarea
+            :value="schemaStore.selectedTable?.notes ?? ''"
+            :readonly="schemaStore.viewMode !== 'full'"
+            rows="12"
+            placeholder="Add notes, documentation, or context about this table..."
+            class="w-full bg-secondary-950 border border-secondary-800 rounded-lg px-4 py-3 text-xs focus:border-primary-500 focus:outline-none text-secondary-200 placeholder:text-secondary-500 resize-none leading-relaxed"
+            :class="schemaStore.viewMode !== 'full' ? 'cursor-default opacity-70' : ''"
+            @input="updateNotes"
+          />
+          <p class="text-[10px] text-secondary-500 italic">
+            Notes are included in the SQL export as comments above the table definition.
+          </p>
+        </div>
       </div>
     </template>
 

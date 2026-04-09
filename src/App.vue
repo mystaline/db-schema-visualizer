@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
 import { useSchemaStore } from './stores/schemaStore'
+import { useHistory } from './composables/useHistory'
 import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
 import SchemaCanvas from './components/SchemaCanvas.vue'
@@ -7,6 +9,30 @@ import DetailPanel from './components/DetailPanel.vue'
 import ToastContainer from './components/ToastContainer.vue'
 
 const schemaStore = useSchemaStore()
+const { undo, redo } = useHistory()
+
+const onKeyDown = (e: KeyboardEvent) => {
+  // Skip if user is typing in an input/textarea
+  const tag = (e.target as HTMLElement)?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+  const mod = e.ctrlKey || e.metaKey
+  if (!mod) return
+
+  // Redo: Ctrl+Y or Ctrl+Shift+Z (check first — more specific)
+  if (e.key === 'y' || (e.key === 'z' && e.shiftKey) || (e.key === 'Z' && e.shiftKey)) {
+    e.preventDefault()
+    redo()
+  }
+  // Undo: Ctrl+Z (without Shift)
+  else if (e.key === 'z' && !e.shiftKey) {
+    e.preventDefault()
+    undo()
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeyDown))
+onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 </script>
 
 <template>

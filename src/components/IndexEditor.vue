@@ -160,7 +160,10 @@ const getColumnName = (id: string) =>
             :key="col.columnId"
             class="text-[10px] font-mono bg-secondary-800 px-2 py-0.5 rounded text-secondary-400"
           >
-            {{ getColumnName(col.columnId) }}<span v-if="col.order === 'DESC'" class="text-primary-400 ml-0.5">DESC</span>
+            {{ getColumnName(col.columnId) }}<span
+              v-if="col.order === 'DESC'"
+              class="text-primary-400 ml-0.5"
+            >DESC</span>
           </span>
           <span
             v-for="(expr, i) in (idx.expressions ?? [])"
@@ -180,11 +183,14 @@ const getColumnName = (id: string) =>
     </div>
 
     <!-- New Index Form (edit mode only) -->
-    <div v-if="schemaStore.viewMode === 'full'" class="space-y-4">
+    <div
+      v-if="schemaStore.viewMode === 'full'"
+      class="space-y-4"
+    >
       <div class="flex items-center gap-2 py-1">
-        <div class="h-px flex-1 bg-secondary-600"></div>
+        <div class="h-px flex-1 bg-secondary-600" />
         <span class="text-[9px] font-bold text-secondary-500 uppercase tracking-[0.2em]">Register Index</span>
-        <div class="h-px flex-1 bg-secondary-600"></div>
+        <div class="h-px flex-1 bg-secondary-600" />
       </div>
 
       <div class="space-y-1.5">
@@ -203,7 +209,12 @@ const getColumnName = (id: string) =>
             (e.target as HTMLInputElement).value = v
           }"
         >
-        <p v-if="indexNameError" class="text-[10px] text-danger-400 ml-1">{{ indexNameError }}</p>
+        <p
+          v-if="indexNameError"
+          class="text-[10px] text-danger-400 ml-1"
+        >
+          {{ indexNameError }}
+        </p>
       </div>
 
       <div class="space-y-1.5">
@@ -258,16 +269,24 @@ const getColumnName = (id: string) =>
             :disabled="!newExpression.trim()"
             class="px-3 py-1.5 bg-secondary-800 hover:bg-primary-600 rounded-lg text-[10px] font-bold text-secondary-300 hover:text-white transition-all disabled:opacity-20"
             @click="addExpression"
-          >+</button>
+          >
+            +
+          </button>
         </div>
-        <div v-if="newIndex.expressions.length" class="flex flex-wrap gap-1.5">
+        <div
+          v-if="newIndex.expressions.length"
+          class="flex flex-wrap gap-1.5"
+        >
           <span
             v-for="(expr, i) in newIndex.expressions"
             :key="i"
             class="text-[10px] font-mono bg-primary-500/10 border border-primary-500/20 px-2 py-0.5 rounded text-primary-400 italic flex items-center gap-1"
           >
             {{ expr }}
-            <button class="text-danger-400 hover:text-danger-300" @click="removeExpression(i)">&times;</button>
+            <button
+              class="text-danger-400 hover:text-danger-300"
+              @click="removeExpression(i)"
+            >&times;</button>
           </span>
         </div>
       </div>

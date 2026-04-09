@@ -56,7 +56,10 @@ const handleAddTable = () => {
             /
           </div>
         </div>
-        <p v-if="touched && identifierError" class="text-[10px] text-danger-400 ml-1">
+        <p
+          v-if="touched && identifierError"
+          class="text-[10px] text-danger-400 ml-1"
+        >
           {{ identifierError }}
         </p>
       </div>

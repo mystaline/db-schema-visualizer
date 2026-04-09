@@ -21,6 +21,13 @@ const generatedSql = computed(() => {
 
   // 1. Tables (Columns & Primary Keys)
   schemaStore.tables.forEach((table) => {
+    // Table notes as SQL comments
+    if (table.notes?.trim()) {
+      table.notes.trim().split('\n').forEach((line) => {
+        sql += `-- ${line}\n`;
+      });
+    }
+
     sql += `CREATE TABLE ${table.name} (\n`;
 
     const lines: string[] = [];
@@ -38,8 +45,8 @@ const generatedSql = computed(() => {
       lines.push(`  PRIMARY KEY (${pks.join(", ")})`);
     }
 
-    table.checkConstraints.forEach((check) => {
-      lines.push(`  CHECK (${check})`);
+    table.checkConstraints.forEach((constraint) => {
+      lines.push(`  CONSTRAINT ${constraint.name} CHECK (${constraint.expression})`);
     });
 
     sql += lines.join(",\n");

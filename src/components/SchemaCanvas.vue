@@ -148,11 +148,15 @@ const canvasStyle = computed(() => ({
       <button
         class="px-3 py-1 text-xs font-bold bg-danger-500/20 hover:bg-danger-500/40 text-danger-300 rounded-lg transition-colors"
         @click="confirmDeleteTable"
-      >Delete</button>
+      >
+        Delete
+      </button>
       <button
         class="px-3 py-1 text-xs font-bold bg-secondary-800 hover:bg-secondary-700 text-secondary-300 rounded-lg transition-colors"
         @click="pendingDeleteTable = false"
-      >Cancel</button>
+      >
+        Cancel
+      </button>
     </div>
 
     <!-- Canvas HUD Controls -->

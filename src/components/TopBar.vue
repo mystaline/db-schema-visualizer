@@ -3,11 +3,13 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
 import { useTheme } from "../composables/useTheme";
+import { useHistory } from "../composables/useHistory";
 import SqlExportModal from "./SqlExportModal.vue";
 
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
 const { isDark, toggleTheme } = useTheme();
+const { undo, redo, canUndo, canRedo } = useHistory();
 const isExportOpen = ref(false);
 const showShareMenu = ref(false);
 const shareMenuRef = ref<HTMLElement | null>(null);
@@ -108,7 +110,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "idx_users_email",    type: "normal", columns: [{ columnId: userEmailId, order: "ASC" }], expressions: [], filter: "" },
         { id: crypto.randomUUID(), name: "idx_users_username", type: "normal", columns: [{ columnId: userUsernameId, order: "ASC" }], expressions: [], filter: "" },
       ],
-      checkConstraints: ["role IN ('admin', 'author', 'reader')"],
+      checkConstraints: [{ id: crypto.randomUUID(), name: "chk_users_role", expression: "role IN ('admin', 'author', 'reader')" }],
     });
 
     schemaStore.tables.push({
@@ -131,7 +133,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "unq_posts_slug",         type: "unique", columns: [{ columnId: postSlugId, order: "ASC" }], expressions: [], filter: "" },
         { id: crypto.randomUUID(), name: "idx_posts_published_at", type: "normal", columns: [{ columnId: postPublishedId, order: "ASC" }], expressions: [], filter: "status = 'published'" },
       ],
-      checkConstraints: ["status IN ('draft', 'published', 'archived')"],
+      checkConstraints: [{ id: crypto.randomUUID(), name: "chk_posts_status", expression: "status IN ('draft', 'published', 'archived')" }],
     });
 
     schemaStore.tables.push({
@@ -298,7 +300,10 @@ const executePreset = (type: "blog" | "ecommerce") => {
       indexes: [
         { id: crypto.randomUUID(), name: "idx_products_name", type: "normal", columns: [{ columnId: productNameColId, order: "ASC" }], expressions: [], filter: "" },
       ],
-      checkConstraints: ["price > 0", "stock >= 0"],
+      checkConstraints: [
+        { id: crypto.randomUUID(), name: "chk_products_price", expression: "price > 0" },
+        { id: crypto.randomUUID(), name: "chk_products_stock", expression: "stock >= 0" }
+      ],
     });
 
     schemaStore.tables.push({
@@ -398,7 +403,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
         { id: crypto.randomUUID(), name: "idx_order_items_order_id", type: "normal", columns: [{ columnId: orderItemOrderColId, order: "ASC" }], expressions: [], filter: "" },
         { id: crypto.randomUUID(), name: "idx_order_items_product_id", type: "normal", columns: [{ columnId: orderItemProductColId, order: "ASC" }], expressions: [], filter: "" },
       ],
-      checkConstraints: ["quantity > 0"],
+      checkConstraints: [{ id: crypto.randomUUID(), name: "chk_order_items_quantity", expression: "quantity > 0" }],
     });
 
     schemaStore.addForeignKey({
@@ -479,8 +484,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
       >
         <span
           class="text-[10px] font-bold text-secondary-400 uppercase tracking-widest"
-          >Presets:</span
-        >
+        >Presets:</span>
         <button
           class="text-xs font-bold transition-colors uppercase tracking-tight px-2 py-1 rounded-lg"
           :class="
@@ -509,8 +513,62 @@ const executePreset = (type: "blog" | "ecommerce") => {
 
       <div class="w-px h-6 bg-secondary-800 mx-1" />
 
+      <!-- Undo / Redo -->
+      <div
+        v-if="schemaStore.viewMode === 'full'"
+        class="flex items-center gap-1"
+      >
+        <button
+          :disabled="!canUndo"
+          class="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 hover:text-secondary-50 transition-all disabled:opacity-20 disabled:cursor-default focus:outline-none"
+          aria-label="Undo (Ctrl+Z)"
+          title="Undo (Ctrl+Z)"
+          @click="undo"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"
+            />
+          </svg>
+        </button>
+        <button
+          :disabled="!canRedo"
+          class="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 hover:text-secondary-50 transition-all disabled:opacity-20 disabled:cursor-default focus:outline-none"
+          aria-label="Redo (Ctrl+Y)"
+          title="Redo (Ctrl+Y)"
+          @click="redo"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="w-px h-6 bg-secondary-800 mx-1" />
+
       <!-- Share: dropdown (full mode) or single read-only button (read mode) -->
-      <div ref="shareMenuRef" class="relative">
+      <div
+        ref="shareMenuRef"
+        class="relative"
+      >
         <!-- Full mode: dropdown with access level choice -->
         <template v-if="schemaStore.viewMode === 'full'">
           <button
@@ -538,8 +596,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
             </div>
             <span
               class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50 transition-colors"
-              >Share URL</span
-            >
+            >Share URL</span>
           </button>
 
           <Transition
@@ -638,8 +695,7 @@ const executePreset = (type: "blog" | "ecommerce") => {
           </div>
           <span
             class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50 transition-colors"
-            >Share Read-Only</span
-          >
+          >Share Read-Only</span>
         </button>
       </div>
     </div>
@@ -717,6 +773,9 @@ const executePreset = (type: "blog" | "ecommerce") => {
       </button>
     </div>
 
-    <SqlExportModal :is-open="isExportOpen" @close="isExportOpen = false" />
+    <SqlExportModal
+      :is-open="isExportOpen"
+      @close="isExportOpen = false"
+    />
   </header>
 </template>
