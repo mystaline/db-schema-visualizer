@@ -340,7 +340,31 @@ export const useSchemaStore = defineStore("schema", () => {
       const raw = localStorage.getItem("db_schema_visualizer");
       if (!raw) return false;
       const parsed = JSON.parse(raw);
-      if (parsed.t) tables.value = parsed.t;
+      if (parsed.t) {
+        tables.value = parsed.t.map((table: Table) => ({
+          ...table,
+          indexes: (table.indexes || []).map((idx: any) => {
+            if (idx.columnIds && !idx.parts) {
+              return {
+                ...idx,
+                parts: [
+                  ...idx.columnIds.map((id: string) => ({
+                    type: "column",
+                    value: id,
+                    order: "ASC",
+                  })),
+                  ...(idx.expressions || []).map((expr: string) => ({
+                    type: "expression",
+                    value: expr,
+                    order: "ASC",
+                  })),
+                ],
+              };
+            }
+            return idx;
+          }),
+        }));
+      }
       if (parsed.f) foreignKeys.value = parsed.f;
       if (parsed.v) {
         canvasTransform.value = {
@@ -404,7 +428,31 @@ export const useSchemaStore = defineStore("schema", () => {
       const parsed = JSON.parse(decompressedData);
 
       viewMode.value = parsed.p === "read" ? "read" : "full";
-      if (parsed.t) tables.value = parsed.t;
+      if (parsed.t) {
+        tables.value = parsed.t.map((table: Table) => ({
+          ...table,
+          indexes: (table.indexes || []).map((idx: any) => {
+            if (idx.columnIds && !idx.parts) {
+              return {
+                ...idx,
+                parts: [
+                  ...idx.columnIds.map((id: string) => ({
+                    type: "column",
+                    value: id,
+                    order: "ASC",
+                  })),
+                  ...(idx.expressions || []).map((expr: string) => ({
+                    type: "expression",
+                    value: expr,
+                    order: "ASC",
+                  })),
+                ],
+              };
+            }
+            return idx;
+          }),
+        }));
+      }
       if (parsed.f) foreignKeys.value = parsed.f;
       if (parsed.v) {
         canvasTransform.value = {
