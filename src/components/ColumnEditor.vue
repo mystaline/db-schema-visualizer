@@ -201,11 +201,13 @@ const onDragEnd = () => {
         :class="[
           invalidColumnIds.has(col.id)
             ? 'border-danger-500/50 hover:border-danger-500/70'
-            : 'border-secondary-800/50 hover:border-secondary-700/50',
+            : col.defaultValue 
+              ? 'border-secondary-800/50 border-l-success-500/60 hover:border-secondary-700/50 hover:border-l-success-500/80' 
+              : 'border-secondary-800/50 hover:border-secondary-700/50',
           dragOverIndex === colIdx && dragIndex !== colIdx
             ? 'border-t-primary-500 border-t-2'
             : '',
-          col.defaultValue ? 'border-l-success-500/60 border-l-2' : '',
+          col.defaultValue ? 'border-l-2' : '',
         ]"
         class="group relative bg-secondary-900/40 rounded-lg border transition-colors overflow-hidden"
         :draggable="schemaStore.viewMode === 'full'"

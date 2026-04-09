@@ -167,11 +167,14 @@ const actionOptions: ForeignKey["onDelete"][] = [
 
     <!-- Outgoing FKs (this table -> other) -->
     <div class="space-y-2">
-      <p
-        class="text-[10px] font-bold text-secondary-500 uppercase tracking-widest"
-      >
-        Outgoing
-      </p>
+      <div class="flex items-center gap-2 py-1">
+        <div class="h-px flex-1 bg-secondary-600" />
+        <span
+          class="text-[9px] font-bold text-secondary-500 uppercase tracking-[0.2em]"
+          >Outgoing</span
+        >
+        <div class="h-px flex-1 bg-secondary-600" />
+      </div>
       <p
         v-if="outgoingFks.length === 0"
         class="text-[11px] text-secondary-500 italic px-1"
