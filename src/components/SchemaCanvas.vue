@@ -77,6 +77,48 @@ const handleCanvasMouseUp = () => {
   isPanning.value = false
 }
 
+const initialPinchDist = ref(0);
+const initialPinchScale = ref(1);
+
+const handleTouchStart = (e: TouchEvent) => {
+  if (e.touches.length === 1) {
+    isPanning.value = true
+    const touch = e.touches[0]
+    panOffset.value = {
+      x: touch.clientX - schemaStore.canvasTransform.x,
+      y: touch.clientY - schemaStore.canvasTransform.y
+    }
+  } else if (e.touches.length === 2) {
+    isPanning.value = false;
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    initialPinchDist.value = dist;
+    initialPinchScale.value = schemaStore.canvasTransform.k;
+  }
+}
+
+const handleTouchMove = (e: TouchEvent) => {
+  if (e.touches.length === 1 && isPanning.value) {
+    const touch = e.touches[0]
+    schemaStore.canvasTransform.x = touch.clientX - panOffset.value.x
+    schemaStore.canvasTransform.y = touch.clientY - panOffset.value.y
+  } else if (e.touches.length === 2) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const delta = dist / initialPinchDist.value;
+    const newScale = Math.min(Math.max(0.2, initialPinchScale.value * delta), 2);
+    schemaStore.canvasTransform.k = newScale;
+  }
+}
+
+const handleTouchEnd = () => {
+  isPanning.value = false
+}
+
 const handleWheel = (e: WheelEvent) => {
   e.preventDefault()
   const zoomFactor = 0.05
@@ -102,6 +144,9 @@ const canvasStyle = computed(() => ({
     @mousemove="handleCanvasMouseMove"
     @mouseup="handleCanvasMouseUp"
     @mouseleave="handleCanvasMouseUp"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
     @wheel="handleWheel"
   >
     <!-- Dynamic Dot Grid — color via CSS var so it responds to light/dark theme -->

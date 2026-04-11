@@ -81,6 +81,51 @@ const handleMouseDown = (e: MouseEvent) => {
   e.preventDefault();
 };
 
+const handleTouchStart = (e: TouchEvent) => {
+  if (schemaStore.viewMode === 'read') {
+    selectTable();
+    return;
+  }
+
+  selectTable();
+  isDragging.value = true;
+  const touch = e.touches[0];
+
+  dragOffset.value = {
+    startX: touch.clientX,
+    startY: touch.clientY,
+    initialX: props.table.x,
+    initialY: props.table.y,
+  };
+
+  window.addEventListener("touchmove", handleTouchMove, { passive: false });
+  window.addEventListener("touchend", handleTouchUp);
+
+  e.stopPropagation();
+};
+
+const handleTouchMove = (e: TouchEvent) => {
+  if (!isDragging.value) return;
+  e.preventDefault(); // Prevent scrolling while dragging
+
+  const touch = e.touches[0];
+  const deltaX = (touch.clientX - dragOffset.value.startX) / props.scale;
+  const deltaY = (touch.clientY - dragOffset.value.startY) / props.scale;
+
+  const newX = dragOffset.value.initialX + deltaX;
+  const newY = dragOffset.value.initialY + deltaY;
+
+  schemaStore.activeDrag = { id: props.table.id, x: newX, y: newY };
+  schemaStore.updateTable(props.table.id, { x: newX, y: newY });
+};
+
+const handleTouchUp = () => {
+  isDragging.value = false;
+  schemaStore.activeDrag = null;
+  window.removeEventListener("touchmove", handleTouchMove);
+  window.removeEventListener("touchend", handleTouchUp);
+};
+
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
@@ -113,6 +158,8 @@ const cancelRename = () => {
 onUnmounted(() => {
   window.removeEventListener("mousemove", handleMouseMove);
   window.removeEventListener("mouseup", handleMouseUp);
+  window.removeEventListener("touchmove", handleTouchMove);
+  window.removeEventListener("touchend", handleTouchUp);
   if (isDragging.value) {
     schemaStore.activeDrag = null;
   }
@@ -129,6 +176,7 @@ onUnmounted(() => {
     :aria-label="`Table: ${table.name}, ${table.columns.length} columns`"
     :aria-selected="isSelected"
     @mousedown="handleMouseDown"
+    @touchstart="handleTouchStart"
     @keydown="handleKeyDown"
   >
     <div

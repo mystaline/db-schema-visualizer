@@ -12,6 +12,7 @@ const { isDark, toggleTheme } = useTheme();
 const { undo, redo, canUndo, canRedo } = useHistory();
 const isExportOpen = ref(false);
 const showShareMenu = ref(false);
+const isMobileMenuOpen = ref(false);
 const shareMenuRef = ref<HTMLElement | null>(null);
 
 // Two-click preset confirmation
@@ -20,6 +21,7 @@ let presetTimer: ReturnType<typeof setTimeout> | null = null;
 
 const handleShare = async (permission: "full" | "read") => {
   showShareMenu.value = false;
+  isMobileMenuOpen.value = false;
   try {
     const base64 = await schemaStore.getShareableData(permission);
     const url = `${window.location.origin}${window.location.pathname}#data=${base64}`;
@@ -50,6 +52,7 @@ const loadPreset = (type: "blog" | "ecommerce") => {
     if (presetTimer) clearTimeout(presetTimer);
     pendingPreset.value = null;
     executePreset(type);
+    isMobileMenuOpen.value = false;
     return;
   }
 
@@ -802,16 +805,15 @@ const executePreset = (type: "blog" | "ecommerce") => {
 
 <template>
   <header
-    class="h-16 flex items-center justify-between px-6 bg-secondary-900 border-b border-secondary-600"
+    class="relative px-4 lg:px-8 py-4 flex items-center justify-between z-99901 overflow-visible"
   >
-    <div class="flex items-center gap-6">
+    <div class="flex items-center gap-4 lg:gap-6">
       <div class="flex items-center gap-3">
-        <!-- shadow: primary-400 (#009eff) at 40% — hardcoded; Tailwind arbitrary values can't use CSS vars -->
         <div
-          class="w-8 h-8 rounded-lg bg-linear-to-br from-primary-500 to-primary-700 shadow-[0_0_15px_rgba(0,158,255,0.4)] flex items-center justify-center"
+          class="w-10 h-10 rounded-2xl bg-linear-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20 active:scale-95 transition-transform cursor-pointer"
         >
           <svg
-            class="w-5 h-5 text-white"
+            class="w-6 h-6 text-white"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -827,71 +829,69 @@ const executePreset = (type: "blog" | "ecommerce") => {
         <h1
           class="text-xl font-bold tracking-tight text-secondary-50 font-mono uppercase"
         >
-          SCHEMA<span class="text-primary-400">VIS</span>
+          <span class="hidden sm:inline">SCHEMA</span
+          ><span class="text-primary-400">VIS</span>
         </h1>
       </div>
 
-      <div class="h-6 w-px bg-secondary-800" />
+      <div class="hidden lg:block h-6 w-px bg-secondary-800" />
 
-      <!-- View Only Badge (read mode) -->
+      <!-- View Only Badge -->
       <div
         v-if="schemaStore.viewMode === 'read'"
-        class="px-3 py-1 rounded-lg bg-warning-500/10 border border-warning-500/20 text-warning-400 text-[10px] font-bold uppercase tracking-widest"
+        class="px-2 lg:px-3 py-1 rounded-lg bg-warning-500/10 border border-warning-500/20 text-warning-400 text-[9px] lg:text-[10px] font-bold uppercase tracking-widest"
       >
-        View Only
+        Read Only
       </div>
 
-      <!-- Presets (hidden in read mode) -->
+      <!-- Presets (Desktop Only) -->
       <div
         v-if="schemaStore.viewMode === 'full'"
-        class="flex items-center gap-3"
+        class="hidden lg:flex items-center gap-3"
       >
         <span
           class="text-[10px] font-bold text-secondary-400 uppercase tracking-widest"
           >Presets:</span
         >
         <button
-          class="text-xs font-bold transition-colors uppercase tracking-tight px-2 py-1 rounded-lg"
+          class="text-xs font-bold transition-all uppercase tracking-tight px-3 py-1.5 rounded-lg border"
           :class="
             pendingPreset === 'blog'
-              ? 'text-warning-400 bg-warning-500/10 border border-warning-500/20'
-              : 'text-secondary-400 hover:text-primary-400'
+              ? 'bg-warning-500/20 border-warning-500/50 text-warning-400 animate-pulse'
+              : 'text-secondary-400 hover:text-primary-400 border-transparent hover:bg-secondary-800'
           "
           @click="loadPreset('blog')"
         >
-          {{ pendingPreset === "blog" ? "Sure? (click again)" : "Blog Engine" }}
+          {{ pendingPreset === "blog" ? "Confirm?" : "Blog" }}
         </button>
         <button
-          class="text-xs font-bold transition-colors uppercase tracking-tight px-2 py-1 rounded-lg"
+          class="text-xs font-bold transition-all uppercase tracking-tight px-3 py-1.5 rounded-lg border"
           :class="
             pendingPreset === 'ecommerce'
-              ? 'text-warning-400 bg-warning-500/10 border border-warning-500/20'
-              : 'text-secondary-400 hover:text-primary-400'
+              ? 'bg-warning-500/20 border-warning-500/50 text-warning-400 animate-pulse'
+              : 'text-secondary-400 hover:text-primary-400 border-transparent hover:bg-secondary-800'
           "
           @click="loadPreset('ecommerce')"
         >
-          {{
-            pendingPreset === "ecommerce" ? "Sure? (click again)" : "E-Commerce"
-          }}
+          {{ pendingPreset === "ecommerce" ? "Confirm?" : "Shop" }}
         </button>
       </div>
 
-      <div class="w-px h-6 bg-secondary-800 mx-1" />
+      <div class="hidden sm:block w-px h-6 bg-secondary-800 mx-1" />
 
-      <!-- Undo / Redo -->
+      <!-- Undo / Redo (Unified Visibility) -->
       <div
         v-if="schemaStore.viewMode === 'full'"
-        class="flex items-center gap-1"
+        class="flex items-center gap-1 shrink-0"
       >
         <button
           :disabled="!canUndo"
-          class="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 hover:text-secondary-50 transition-all disabled:opacity-20 disabled:cursor-default focus:outline-none"
-          aria-label="Undo (Ctrl+Z)"
-          title="Undo (Ctrl+Z)"
+          class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 disabled:opacity-20 active:scale-90 transition-all"
+          aria-label="Undo"
           @click="undo"
         >
           <svg
-            class="w-4 h-4"
+            class="w-4 h-4 lg:w-4.5 lg:h-4.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -900,19 +900,18 @@ const executePreset = (type: "blog" | "ecommerce") => {
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"
+              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
             />
           </svg>
         </button>
         <button
           :disabled="!canRedo"
-          class="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 hover:text-secondary-50 transition-all disabled:opacity-20 disabled:cursor-default focus:outline-none"
-          aria-label="Redo (Ctrl+Y)"
-          title="Redo (Ctrl+Y)"
+          class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 disabled:opacity-20 active:scale-90 transition-all"
+          aria-label="Redo"
           @click="redo"
         >
           <svg
-            class="w-4 h-4"
+            class="w-4 h-4 lg:w-4.5 lg:h-4.5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -921,129 +920,30 @@ const executePreset = (type: "blog" | "ecommerce") => {
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4"
+              d="M21 10h-10a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"
             />
           </svg>
         </button>
       </div>
+    </div>
 
-      <div class="w-px h-6 bg-secondary-800 mx-1" />
-
-      <!-- Share: dropdown (full mode) or single read-only button (read mode) -->
-      <div ref="shareMenuRef" class="relative">
-        <!-- Full mode: dropdown with access level choice -->
-        <template v-if="schemaStore.viewMode === 'full'">
-          <button
-            class="flex items-center gap-2 group focus:outline-none"
-            aria-label="Share schema — choose access level"
-            :aria-expanded="showShareMenu"
-            @click="showShareMenu = !showShareMenu"
-          >
-            <div
-              class="w-8 h-8 rounded-lg bg-secondary-800 group-hover:bg-primary-500/20 group-hover:border-primary-500/30 border border-transparent flex items-center justify-center transition-all"
-            >
-              <svg
-                class="w-4 h-4 text-secondary-400 group-hover:text-primary-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                />
-              </svg>
-            </div>
-            <span
-              class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50 transition-colors"
-              >Share URL</span
-            >
-          </button>
-
-          <Transition
-            enter-active-class="transition ease-out duration-150"
-            enter-from-class="opacity-0 translate-y-1"
-            enter-to-class="opacity-100 translate-y-0"
-            leave-active-class="transition ease-in duration-100"
-            leave-from-class="opacity-100 translate-y-0"
-            leave-to-class="opacity-0 translate-y-1"
-          >
-            <div
-              v-if="showShareMenu"
-              class="absolute top-10 left-0 bg-secondary-900 border border-secondary-700 rounded-xl shadow-2xl z-50 overflow-hidden min-w-[160px]"
-              role="menu"
-            >
-              <div class="px-3 py-2 border-b border-secondary-800">
-                <p
-                  class="text-[9px] font-bold text-secondary-500 uppercase tracking-widest"
-                >
-                  Access Level
-                </p>
-              </div>
-              <button
-                class="w-full text-left px-4 py-3 text-xs font-bold text-secondary-300 hover:bg-secondary-800 hover:text-secondary-50 transition-colors flex items-center gap-3"
-                role="menuitem"
-                @click="handleShare('full')"
-              >
-                <svg
-                  class="w-3.5 h-3.5 text-primary-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-                Full Access
-              </button>
-              <button
-                class="w-full text-left px-4 py-3 text-xs font-bold text-secondary-300 hover:bg-secondary-800 hover:text-secondary-50 transition-colors flex items-center gap-3"
-                role="menuitem"
-                @click="handleShare('read')"
-              >
-                <svg
-                  class="w-3.5 h-3.5 text-secondary-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                  />
-                </svg>
-                Read Only
-              </button>
-            </div>
-          </Transition>
-        </template>
-
-        <!-- Read mode: single button, always shares as read-only -->
+    <!-- Actions -->
+    <div class="flex items-center gap-2 lg:gap-4">
+      <!-- Desktop Share Dropdown -->
+      <div
+        v-if="schemaStore.viewMode === 'full'"
+        ref="shareMenuRef"
+        class="relative hidden lg:block"
+      >
         <button
-          v-else
           class="flex items-center gap-2 group focus:outline-none"
-          aria-label="Copy read-only link"
-          @click="handleShare('read')"
+          @click="showShareMenu = !showShareMenu"
         >
           <div
-            class="w-8 h-8 rounded-lg bg-secondary-800 group-hover:bg-secondary-700 border border-transparent flex items-center justify-center transition-all"
+            class="w-8 h-8 rounded-lg bg-secondary-800 group-hover:bg-primary-500/20 border border-transparent flex items-center justify-center transition-all"
           >
             <svg
-              class="w-4 h-4 text-secondary-400 group-hover:text-secondary-300"
+              class="w-4 h-4 text-secondary-400 group-hover:text-primary-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1057,35 +957,49 @@ const executePreset = (type: "blog" | "ecommerce") => {
             </svg>
           </div>
           <span
-            class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50 transition-colors"
-            >Share Read-Only</span
+            class="text-xs font-bold text-secondary-400 group-hover:text-secondary-50"
+            >Share</span
           >
         </button>
+        <Transition
+          enter-active-class="transition ease-out duration-150"
+          enter-from-class="opacity-0 translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition ease-in duration-100"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 translate-y-1"
+        >
+          <div
+            v-if="showShareMenu"
+            class="absolute top-10 right-0 bg-secondary-900 border border-secondary-700 rounded-xl shadow-2xl z-50 overflow-hidden min-w-[160px]"
+          >
+            <button
+              class="w-full text-left px-4 py-3 text-xs font-bold text-secondary-300 hover:bg-secondary-800"
+              @click="handleShare('full')"
+            >
+              Full Access
+            </button>
+            <button
+              class="w-full text-left px-4 py-3 text-xs font-bold text-secondary-300 hover:bg-secondary-800"
+              @click="handleShare('read')"
+            >
+              Read Only
+            </button>
+          </div>
+        </Transition>
       </div>
-    </div>
 
-    <div class="flex items-center gap-4">
-      <div
-        class="px-3 py-1.5 flex items-center gap-2 bg-secondary-950 border border-secondary-800 rounded-lg text-secondary-300 text-[10px] font-mono"
-      >
-        <span class="w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse" />
-        POSTGRES-DIALECT ACTIVE
-      </div>
-
-      <!-- Light / Dark toggle -->
+      <!-- Theme Toggle -->
       <button
-        class="w-8 h-8 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 hover:text-secondary-50 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500"
-        :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 transition-all active:scale-90"
         @click="toggleTheme"
       >
-        <!-- Sun (shown in dark mode — click to go light) -->
         <svg
           v-if="isDark"
           class="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
-          aria-hidden="true"
         >
           <path
             stroke-linecap="round"
@@ -1094,14 +1008,12 @@ const executePreset = (type: "blog" | "ecommerce") => {
             d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
           />
         </svg>
-        <!-- Moon (shown in light mode — click to go dark) -->
         <svg
           v-else
           class="w-4 h-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
-          aria-hidden="true"
         >
           <path
             stroke-linecap="round"
@@ -1112,15 +1024,33 @@ const executePreset = (type: "blog" | "ecommerce") => {
         </svg>
       </button>
 
-      <!-- shadow: primary-500 (#0078e6) at 20% — hardcoded; Tailwind arbitrary values can't use CSS vars -->
+      <!-- Hamburger (Mobile Only) -->
       <button
-        v-if="schemaStore.viewMode === 'full'"
-        class="px-6 py-2.5 text-xs font-bold bg-linear-to-br from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600 text-white rounded-xl shadow-[0_0_30px_rgba(0,120,230,0.2)] transition-all active:scale-95 flex items-center gap-2 uppercase tracking-widest focus:ring-2 focus:ring-primary-500 focus:outline-none"
-        aria-label="Open SQL Export dialog"
-        @click="isExportOpen = true"
+        class="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-secondary-800 border border-secondary-700 text-primary-400 active:scale-95 shadow-lg shadow-primary-500/10"
+        @click="isMobileMenuOpen = true"
       >
         <svg
-          aria-hidden="true"
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2.5"
+            d="M4 6h16M4 12h16m-7 6h7"
+          />
+        </svg>
+      </button>
+
+      <!-- Desktop SQL Export -->
+      <button
+        v-if="schemaStore.viewMode === 'full'"
+        class="hidden lg:flex px-6 py-2.5 text-xs font-bold bg-linear-to-br from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600 text-white rounded-xl shadow-lg active:scale-95 transition-all items-center gap-2"
+        @click="openExport"
+      >
+        <svg
           class="w-4 h-4"
           fill="none"
           stroke="currentColor"
@@ -1137,6 +1067,227 @@ const executePreset = (type: "blog" | "ecommerce") => {
       </button>
     </div>
 
+    <!-- Mobile Menu Overlay -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0 translate-x-full"
+        enter-to-class="opacity-100 translate-x-0"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100 translate-x-0"
+        leave-to-class="opacity-0 translate-x-full"
+      >
+        <div
+          v-if="isMobileMenuOpen"
+          class="fixed inset-0 z-100002 bg-secondary-950 flex flex-col p-8 overflow-hidden touch-none"
+        >
+          <div class="flex items-center justify-between mb-10 shrink-0">
+            <h2
+              class="text-xl font-bold font-mono tracking-tighter text-white uppercase"
+            >
+              Workplace Menu
+            </h2>
+            <button
+              @click="isMobileMenuOpen = false"
+              class="w-12 h-12 flex items-center justify-center rounded-2xl bg-secondary-800 text-secondary-400 active:scale-95"
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div
+            class="space-y-8 flex-1 overflow-y-auto custom-scrollbar pr-2 pb-10"
+          >
+            <!-- Share Section (Moved here for mobile) -->
+            <div class="space-y-4">
+              <span
+                class="text-[11px] font-black text-secondary-600 uppercase tracking-[0.2em] block"
+                >Collaboration</span
+              >
+              <div class="grid grid-cols-2 gap-3">
+                <button
+                  class="flex-1 flex flex-col items-start gap-4 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-primary-500 transition-all shadow-xl"
+                  @click="handleShare('full')"
+                >
+                  <div
+                    class="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-5 h-5 text-primary-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
+                    </svg>
+                  </div>
+                  Full Access Link
+                </button>
+                <button
+                  class="flex-1 flex flex-col items-start gap-4 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-secondary-800 transition-all shadow-xl"
+                  @click="handleShare('read')"
+                >
+                  <div
+                    class="w-10 h-10 rounded-xl bg-secondary-700/10 flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-5 h-5 text-secondary-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  </div>
+                  Read-Only Link
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <span
+                class="text-[11px] font-black text-secondary-600 uppercase tracking-[0.2em] block"
+                >Database Tools</span
+              >
+              <button
+                class="w-full flex items-center gap-4 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-primary-500 transition-all"
+                @click="openExport"
+              >
+                <div
+                  class="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-primary-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                    />
+                  </svg>
+                </div>
+                Export PostgreSQL DDL
+              </button>
+              <button
+                class="w-full flex items-center gap-4 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-success-500 transition-all"
+                @click="openImport"
+              >
+                <div
+                  class="w-10 h-10 rounded-xl bg-success-500/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-5 h-5 text-success-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                </div>
+                Import SQL Schema
+              </button>
+            </div>
+
+            <div class="space-y-4">
+              <span
+                class="text-[11px] font-black text-secondary-600 uppercase tracking-[0.2em] block"
+                >System Presets</span
+              >
+              <div class="grid grid-cols-2 gap-4">
+                <button
+                  class="flex flex-col gap-3 p-5 bg-secondary-900 border-2 rounded-3xl text-xs font-bold uppercase transition-all shadow-xl"
+                  :class="
+                    pendingPreset === 'blog'
+                      ? 'border-warning-400 text-warning-400'
+                      : 'border-secondary-800 text-secondary-300'
+                  "
+                  @click="loadPreset('blog')"
+                >
+                  ✍️ {{ pendingPreset === "blog" ? "Confirm?" : "Blog" }}
+                </button>
+                <button
+                  class="flex flex-col gap-3 p-5 bg-secondary-900 border-2 rounded-3xl text-xs font-bold uppercase transition-all shadow-xl"
+                  :class="
+                    pendingPreset === 'ecommerce'
+                      ? 'border-warning-400 text-warning-400'
+                      : 'border-secondary-800 text-secondary-300'
+                  "
+                  @click="loadPreset('ecommerce')"
+                >
+                  🛍️ {{ pendingPreset === "ecommerce" ? "Confirm?" : "E-Com" }}
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="p-6 bg-linear-to-br from-primary-500/10 to-primary-800/10 border border-primary-500/20 rounded-3xl flex items-center justify-between"
+            >
+              <span
+                class="text-xs font-bold text-primary-400 uppercase tracking-widest"
+                >v1.2 Active</span
+              >
+              <span
+                class="w-2 h-2 rounded-full bg-success-500 shadow-lg shadow-success-500/50"
+              />
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <SqlExportModal :is-open="isExportOpen" @close="isExportOpen = false" />
   </header>
 </template>
+
+<style scoped>
+.z-99901 {
+  z-index: 99901;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+</style>

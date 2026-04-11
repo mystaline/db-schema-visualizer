@@ -6,6 +6,7 @@ import TopBar from './components/TopBar.vue'
 import Sidebar from './components/Sidebar.vue'
 import SchemaCanvas from './components/SchemaCanvas.vue'
 import DetailPanel from './components/DetailPanel.vue'
+import MobileSelectedTableUI from './components/MobileSelectedTableUI.vue'
 import ToastContainer from './components/ToastContainer.vue'
 
 const schemaStore = useSchemaStore()
@@ -44,21 +45,27 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
       <!-- Grain Overlay -->
       <div class="absolute inset-0 bg-grain pointer-events-none z-0" />
 
-      <!-- Left Sidebar (hidden in read mode) -->
+      <!-- Left Sidebar (hidden in read mode OR mobile) -->
       <Sidebar
         v-if="schemaStore.viewMode === 'full'"
-        class="w-72 flex-none border-r border-secondary-600 bg-secondary-900/50 backdrop-blur-sm z-20"
+        class="hidden lg:flex w-72 flex-none border-r border-secondary-600 bg-secondary-900/50 backdrop-blur-sm z-20"
       />
 
       <!-- Main Canvas Area -->
-      <main class="flex-1 relative bg-secondary-900 overflow-hidden z-10">
+      <main 
+        class="flex-1 relative bg-secondary-900 overflow-hidden z-10"
+        @click.self="schemaStore.selectedTableId = null"
+      >
         <SchemaCanvas />
       </main>
 
-      <!-- Right Detail Panel (visible in both modes — editors self-disable in read mode) -->
+      <!-- Right Detail Panel (hidden on mobile) -->
       <DetailPanel
-        class="w-96 flex-none border-l border-secondary-600 bg-secondary-900/80 backdrop-blur-md z-20"
+        class="hidden lg:flex w-96 flex-none border-l border-secondary-600 bg-secondary-900/80 backdrop-blur-md z-20"
       />
+
+      <!-- Mobile UI -->
+      <MobileSelectedTableUI class="lg:hidden" />
     </div>
 
     <!-- Global Toast Notifications -->
