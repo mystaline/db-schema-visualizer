@@ -1,5 +1,6 @@
 import { ref, computed, watch } from "vue";
 import { defineStore } from "pinia";
+import { parseDDL } from "../utils/ddlParser";
 
 export interface Column {
   id: string;
@@ -492,5 +493,23 @@ export const useSchemaStore = defineStore("schema", () => {
     getShareableData,
     loadFromShareableData,
     loadFromLocalStorage,
+    importFromSql: async (ddl: string) => {
+      const { tables: newTables, foreignKeys: newFKs } = parseDDL(ddl);
+
+      // Simple grid layout
+      const COLS = Math.ceil(Math.sqrt(newTables.length || 1));
+      const X_GAP = 300;
+      const Y_GAP = 400;
+
+      newTables.forEach((table, i) => {
+        table.x = (i % COLS) * X_GAP + 100;
+        table.y = Math.floor(i / COLS) * Y_GAP + 100;
+      });
+
+      tables.value = newTables;
+      foreignKeys.value = newFKs;
+      selectedTableId.value = null;
+      canvasTransform.value = { x: 0, y: 0, k: 1 };
+    },
   };
 });

@@ -5,12 +5,14 @@ import { useToast } from "../composables/useToast";
 import { useTheme } from "../composables/useTheme";
 import { useHistory } from "../composables/useHistory";
 import SqlExportModal from "./SqlExportModal.vue";
+import SqlImportModal from "./SqlImportModal.vue";
 
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
 const { isDark, toggleTheme } = useTheme();
 const { undo, redo, canUndo, canRedo } = useHistory();
 const isExportOpen = ref(false);
+const isImportOpen = ref(false);
 const showShareMenu = ref(false);
 const isMobileMenuOpen = ref(false);
 const shareMenuRef = ref<HTMLElement | null>(null);
@@ -800,6 +802,17 @@ const executePreset = (type: "blog" | "ecommerce") => {
   }
 
   toast(`${type.charAt(0).toUpperCase() + type.slice(1)} preset loaded!`);
+};
+</script>
+
+const openExport = () => {
+  isExportOpen.value = true;
+  isMobileMenuOpen.value = false;
+};
+
+const openImport = () => {
+  isImportOpen.value = true;
+  isMobileMenuOpen.value = false;
 };
 </script>
 
