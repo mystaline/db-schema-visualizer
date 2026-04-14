@@ -174,11 +174,11 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
       <!-- Modal Inner -->
       <div
         ref="modalRef"
-        class="relative w-full max-w-4xl max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+        class="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 rounded-3xl shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
       >
         <!-- Header -->
         <div
-          class="px-8 py-6 border-b border-secondary-800 flex items-center justify-between bg-secondary-950/30 shrink-0"
+          class="px-8 py-6 border-b border-secondary-200 dark:border-secondary-800 flex items-center justify-between bg-secondary-50 dark:bg-secondary-950/30 shrink-0"
         >
           <div class="flex items-center gap-4">
             <div
@@ -210,7 +210,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
             <div>
               <h3
                 id="import-modal-title"
-                class="text-xl font-bold text-secondary-50 tracking-tight"
+                class="text-xl font-bold text-secondary-900 dark:text-secondary-50 tracking-tight"
               >
                 Import Schema
               </h3>
@@ -244,7 +244,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
         <!-- Tab Switcher -->
         <div
-          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-800 bg-secondary-950/20"
+          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-200 dark:border-secondary-800 bg-secondary-50/50 dark:bg-secondary-950/20"
         >
           <button
             id="import-tab-sql"
@@ -410,14 +410,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
             <textarea
               v-model="importInput"
               :placeholder="textareaPlaceholder"
-              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
+              class="relative w-full h-full bg-white dark:bg-secondary-950 border border-secondary-200 dark:border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-800 dark:text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
             />
           </div>
         </div>
 
         <!-- Footer -->
         <div
-          class="px-8 py-6 border-t border-secondary-800 bg-secondary-950/30 shrink-0 flex gap-4"
+          class="px-8 py-6 border-t border-secondary-200 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-950/30 shrink-0 flex gap-4"
         >
           <button
             class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] focus:ring-2 focus:ring-secondary-500 focus:outline-none"

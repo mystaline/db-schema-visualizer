@@ -893,7 +893,7 @@ const openImport = () => {
     <div class="flex items-center gap-2 lg:gap-4">
       <!-- Version / What's New Toggle -->
       <button
-        class="hidden sm:flex items-center gap-2 px-3 h-8 lg:h-9 bg-secondary-800/50 hover:bg-secondary-800 border border-secondary-700/50 rounded-lg lg:rounded-xl text-[10px] font-black font-mono text-secondary-400 hover:text-primary-400 transition-all group active:scale-95"
+        class="hidden sm:flex items-center gap-2 px-3 h-8 lg:h-9 bg-secondary-100 dark:bg-secondary-800/50 hover:bg-secondary-200 dark:hover:bg-secondary-800 border border-secondary-200 dark:border-secondary-700/50 rounded-lg lg:rounded-xl text-[10px] font-black font-mono text-secondary-800 dark:text-secondary-400 hover:text-primary-500 dark:hover:text-primary-400 transition-all group active:scale-95 shadow-sm dark:shadow-none"
         title="What's New"
         @click="emit('open-whats-new')"
       >

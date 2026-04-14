@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "4.2.0";
+export const APP_VERSION = "4.2.1";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,21 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "4.2.1",
+    date: "April 15, 2026",
+    badge: "fix",
+    items: [
+      {
+        type: "fix",
+        text: "Full overhaul of the light mode experience — improved contrast, refined borders, and better readability across all new modals.",
+      },
+      {
+        type: "fix",
+        text: "Standardized the color palette to strictly follow the Raijin design tokens for both light and dark themes.",
+      },
+    ],
+  },
   {
     // (current session) — feat: JSON export & import
     version: "4.2.0",
