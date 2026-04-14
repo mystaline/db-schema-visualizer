@@ -121,9 +121,9 @@ const getColumnName = (id: string) =>
         :key="idx.id"
         class="bg-secondary-900/40 p-4 rounded-xl border border-secondary-800/50 group"
       >
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-bold text-secondary-200">{{
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div class="flex flex-wrap items-start gap-2 flex-1 min-w-0">
+            <span class="text-sm font-bold text-secondary-200 break-words w-full">{{
               idx.name
             }}</span>
             <span
@@ -134,7 +134,7 @@ const getColumnName = (id: string) =>
           </div>
           <button
             v-if="schemaStore.viewMode === 'full'"
-            class="text-secondary-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-all"
+            class="text-secondary-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
             @click="
               schemaStore.removeIndex(schemaStore.selectedTableId!, idx.id)
             "
@@ -203,7 +203,7 @@ const getColumnName = (id: string) =>
         >
         <p
           v-if="indexNameError"
-          class="text-[10px] text-danger-400 ml-1"
+          class="text-[10px] text-danger-500 ml-1"
         >
           {{ indexNameError }}
         </p>

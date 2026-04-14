@@ -80,11 +80,11 @@ const removeConstraint = (index: number) => {
         :key="constraint.id"
         class="bg-secondary-900/40 p-4 rounded-xl border border-secondary-800/50 group space-y-2"
       >
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-secondary-200 font-mono">{{ constraint.name }}</span>
+        <div class="flex items-start justify-between gap-2">
+          <span class="text-xs font-bold text-secondary-200 font-mono break-words">{{ constraint.name }}</span>
           <button
             v-if="schemaStore.viewMode === 'full'"
-            class="text-secondary-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-all ml-2"
+            class="text-secondary-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
             @click="removeConstraint(idx)"
           >
             <svg
@@ -137,7 +137,7 @@ const removeConstraint = (index: number) => {
         >
         <p
           v-if="constraintNameError"
-          class="text-[10px] text-danger-400 ml-1"
+          class="text-[10px] text-danger-500 ml-1"
         >
           {{ constraintNameError }}
         </p>

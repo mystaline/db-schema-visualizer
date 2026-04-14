@@ -194,9 +194,9 @@ const canvasStyle = computed(() => ({
       v-if="pendingDeleteTable && schemaStore.selectedTable"
       class="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-secondary-900 border border-danger-500/50 rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4"
     >
-      <span class="text-sm text-secondary-200">Delete <span class="font-bold text-danger-400">{{ schemaStore.selectedTable.name }}</span>?</span>
+      <span class="text-sm text-secondary-50">Delete <span class="font-bold text-danger-500">{{ schemaStore.selectedTable.name }}</span>?</span>
       <button
-        class="px-3 py-1 text-xs font-bold bg-danger-500/20 hover:bg-danger-500/40 text-danger-300 rounded-lg transition-colors"
+        class="px-3 py-1 text-xs font-bold bg-danger-500/10 hover:bg-danger-500/20 text-danger-500 rounded-lg transition-colors"
         @click="confirmDeleteTable"
       >
         Delete

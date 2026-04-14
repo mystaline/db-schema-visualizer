@@ -16,11 +16,11 @@ const { toasts } = useToast();
           :key="t.id"
           class="px-5 py-3 rounded-xl text-sm font-bold shadow-2xl backdrop-blur-md border whitespace-nowrap"
           :class="{
-            'bg-secondary-900/90 border-success-500/40 text-success-300':
+            'bg-secondary-900/90 border-success-500/40 text-success-500':
               t.type === 'success',
-            'bg-secondary-900/90 border-red-500/40 text-red-300':
+            'bg-secondary-900/90 border-danger-500/40 text-danger-500':
               t.type === 'error',
-            'bg-secondary-900/90 border-primary-500/40 text-primary-300':
+            'bg-secondary-900/90 border-primary-500/40 text-primary-500':
               t.type === 'info',
           }"
         >

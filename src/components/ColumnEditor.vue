@@ -348,13 +348,13 @@ const onDragEnd = () => {
           class="flex items-center justify-between px-3 py-2 bg-danger-500/5 border-danger-500/20"
           role="alert"
         >
-          <span class="text-xs text-danger-400 font-medium"
-            >Delete <span class="font-bold text-danger-300">{{ col.name }}</span
+          <span class="text-xs text-secondary-50 font-medium"
+            >Delete <span class="font-bold text-danger-500">{{ col.name }}</span
             >?</span
           >
           <div class="flex gap-2">
             <button
-              class="px-3 py-1 text-[10px] font-bold bg-danger-500/20 hover:bg-danger-500/40 text-danger-300 rounded-lg transition-colors focus:outline-none focus:ring-1 focus:ring-danger-500"
+              class="px-3 py-1 text-[10px] font-bold bg-danger-500/10 hover:bg-danger-500/20 text-danger-500 rounded-lg transition-colors focus:outline-none focus:ring-1 focus:ring-danger-500"
               @click="confirmDelete"
             >
               Delete

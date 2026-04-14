@@ -41,7 +41,7 @@ const handleAddTable = () => {
             placeholder="e.g. user_profiles"
             class="w-full bg-secondary-950 border rounded-xl px-4 py-2.5 text-sm focus:outline-none transition-all placeholder:text-secondary-500 focus:ring-4"
             :class="touched && identifierError
-              ? 'border-danger-500/70 focus:border-danger-500 focus:ring-danger-500/10 text-danger-300'
+              ? 'border-danger-500/70 focus:border-danger-500 focus:ring-danger-500/10 text-danger-500'
               : 'border-secondary-800 focus:border-primary-500 focus:ring-primary-500/10'"
             @input="(e) => {
               let v = (e.target as HTMLInputElement).value.replace(/[^a-zA-Z0-9_]/g, '')
@@ -58,7 +58,7 @@ const handleAddTable = () => {
         </div>
         <p
           v-if="touched && identifierError"
-          class="text-[10px] text-danger-400 ml-1"
+          class="text-[10px] text-danger-500 ml-1"
         >
           {{ identifierError }}
         </p>

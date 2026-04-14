@@ -190,13 +190,13 @@ const actionOptions: ForeignKey["onDelete"][] = [
         <!-- Display mode -->
         <template v-if="editingFkId !== fk.id">
           <div class="p-4 space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2 text-sm">
-                <span class="font-mono text-primary-400">{{
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2 text-sm flex-wrap">
+                <span class="font-mono text-primary-400 break-words">{{
                   getColumnName(fk.sourceTableId, fk.sourceColumnId)
                 }}</span>
                 <svg
-                  class="w-3 h-3 text-secondary-600"
+                  class="w-3 h-3 text-secondary-600 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -208,15 +208,15 @@ const actionOptions: ForeignKey["onDelete"][] = [
                     d="M14 5l7 7m0 0l-7 7m7-7H3"
                   />
                 </svg>
-                <span class="text-secondary-400 font-mono"
+                <span class="text-secondary-400 font-mono break-words"
                   >{{ getTableName(fk.targetTableId) }}.</span
-                ><span class="font-mono text-success-400">{{
+                ><span class="font-mono text-success-400 break-words">{{
                   getColumnName(fk.targetTableId, fk.targetColumnId)
                 }}</span>
               </div>
               <div
                 v-if="schemaStore.viewMode === 'full'"
-                class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all"
+                class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
               >
                 <!-- Edit -->
                 <button

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Raijin Palette */
+  /* Raijin Palette - Aligned with colors.config.json */
   --color-primary-50: #eaf7ff;
   --color-primary-100: #bce9ff;
   --color-primary-200: #75d4ff;
@@ -23,7 +23,7 @@
   --color-secondary-700: #1f2631;
   --color-secondary-800: #131921;
   --color-secondary-900: #0a0e14;
-  --color-secondary-950: #060810;
+  --color-secondary-950: #05080c; /* Deepest Raijin layer */
 
   --color-success-50: #f2fff9;
   --color-success-100: #c3ffec;
@@ -47,58 +47,74 @@
   --color-danger-800: #4a0735;
   --color-danger-900: #29041e;
 
-  --color-warning-50: #fffbeb;
-  --color-warning-100: #fef3c7;
-  --color-warning-200: #fde68a;
-  --color-warning-300: #fcd34d;
-  --color-warning-400: #fbbf24;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-warning-700: #b45309;
-  --color-warning-800: #92400e;
-  --color-warning-900: #78350f;
+  --color-warning-50: #fff9eb;
+  --color-warning-100: #ffe6b5;
+  --color-warning-200: #ffcd70;
+  --color-warning-300: #ffb23a;
+  --color-warning-400: #f09300;
+  --color-warning-500: #c97800;
+  --color-warning-600: #a06100;
+  --color-warning-700: #784900;
+  --color-warning-800: #523200;
+  --color-warning-900: #2e1c00;
+
+  --color-info-50: #f2fcff;
+  --color-info-100: #d2f5ff;
+  --color-info-200: #9ce6ff;
+  --color-info-300: #66d3ff;
+  --color-info-400: #2ebaff;
+  --color-info-500: #009bcc;
+  --color-info-600: #0078a1;
+  --color-info-700: #005977;
+  --color-info-800: #003d52;
+  --color-info-900: #00212e;
 
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Canvas dot grid color — separate variable so it doesn't invert with the secondary scale */
-:root {
-  --dot-color: #1f2631;
-}
-
-.light {
-  --dot-color: #b0bac5;
-}
-
 @layer base {
   body {
-    @apply bg-secondary-900 text-secondary-50 selection:bg-primary-500/30 antialiased;
+    @apply bg-secondary-950 text-secondary-50 selection:bg-primary-500/30 antialiased;
     font-family: var(--font-sans);
   }
 
-  code,
-  pre {
+  code, pre {
     font-family: var(--font-mono);
   }
 }
 
-/* Light mode: invert the secondary scale so all dark-first utilities flip naturally */
-.light {
-  --color-secondary-50: #0a0e14;
-  --color-secondary-100: #131921;
-  --color-secondary-200: #1f2631;
-  --color-secondary-300: #2c3543;
-  --color-secondary-400: #3d4859;
-  --color-secondary-500: #5b6678;
-  --color-secondary-600: #7e8ea0;
-  --color-secondary-700: #b0bac5;
-  --color-secondary-800: #d7dee6;
-  --color-secondary-900: #f3f5f8;
-  --color-secondary-950: #ffffff;
+/* Canvas dot grid color - Dark */
+:root {
+  --dot-color: #1f2631; /* secondary-700 */
 }
 
-/* Custom grain effect for dark theme */
+/* Light mode: Inverted Raijin mapping for contrast */
+.light {
+  --dot-color: #d7dee6; /* secondary-100 */
+
+  /* Back -> Front Surface mapping */
+  --color-secondary-950: #ffffff; /* Pure white base */
+  --color-secondary-900: #f3f5f8; /* secondary-50 */
+  --color-secondary-800: #e9ecef; 
+  --color-secondary-700: #dee2e6; 
+
+  /* Text: Front -> Back mapping */
+  --color-secondary-50: #0a0e14;  /* secondary-900 */
+  --color-secondary-100: #131921; /* secondary-800 */
+  --color-secondary-200: #1f2631; /* secondary-700 */
+  --color-secondary-300: #2c3543; /* secondary-600 */
+  --color-secondary-400: #3d4859; /* secondary-500 */
+  --color-secondary-500: #495057;
+
+  /* High-Contrast Semantics for Light mode */
+  --color-primary-500: #005db8; /* primary-600 */
+  --color-success-500: #009e6d; /* success-600 */
+  --color-danger-500:  #a10f72; /* danger-600 */
+  --color-warning-500: #a06100; /* warning-600 */
+}
+
+/* Custom grain effect */
 .bg-grain {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   opacity: 0.03;

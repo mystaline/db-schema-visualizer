@@ -138,7 +138,7 @@ const relations = computed(() => {
         :class="[
           rel?.isSelected
             ? 'text-primary-500 stroke-dash-animated'
-            : 'text-secondary-500',
+            : 'text-secondary-400',
         ]"
         marker-end="url(#arrowhead)"
         role="img"
