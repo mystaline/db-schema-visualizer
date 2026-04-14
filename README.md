@@ -38,13 +38,13 @@ pnpm preview
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
+| Layer     | Technology              |
+| --------- | ----------------------- |
 | Framework | Vue 3 (Composition API) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS v4 |
-| State | Pinia |
-| Build | Vite 6 |
+| Language  | TypeScript 5            |
+| Styling   | Tailwind CSS v4         |
+| State     | Pinia                   |
+| Build     | Vite 6                  |
 
 ## Planned
 

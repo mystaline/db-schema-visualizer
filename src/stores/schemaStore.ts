@@ -24,6 +24,9 @@ export interface TableIndex {
   type: "normal" | "unique";
   parts: IndexPart[];
   filter?: string;
+  // Legacy format support
+  columnIds?: string[];
+  expressions?: string[];
 }
 
 export interface CheckConstraint {
@@ -344,7 +347,7 @@ export const useSchemaStore = defineStore("schema", () => {
       if (parsed.t) {
         tables.value = parsed.t.map((table: Table) => ({
           ...table,
-          indexes: (table.indexes || []).map((idx: any) => {
+          indexes: (table.indexes || []).map((idx: TableIndex) => {
             if (idx.columnIds && !idx.parts) {
               return {
                 ...idx,
@@ -432,7 +435,7 @@ export const useSchemaStore = defineStore("schema", () => {
       if (parsed.t) {
         tables.value = parsed.t.map((table: Table) => ({
           ...table,
-          indexes: (table.indexes || []).map((idx: any) => {
+          indexes: (table.indexes || []).map((idx: TableIndex) => {
             if (idx.columnIds && !idx.parts) {
               return {
                 ...idx,
@@ -505,6 +508,43 @@ export const useSchemaStore = defineStore("schema", () => {
         table.x = (i % COLS) * X_GAP + 100;
         table.y = Math.floor(i / COLS) * Y_GAP + 100;
       });
+
+      tables.value = newTables;
+      foreignKeys.value = newFKs;
+      selectedTableId.value = null;
+      canvasTransform.value = { x: 0, y: 0, k: 1 };
+    },
+
+    importFromJson: async (jsonStr: string) => {
+      const parsed = JSON.parse(jsonStr);
+
+      if (!Array.isArray(parsed.tables)) {
+        throw new Error('Invalid JSON schema: missing "tables" array');
+      }
+
+      const newTables: Table[] = (parsed.tables as Table[]).map((table) => ({
+        ...table,
+        indexes: (table.indexes || []).map((idx: TableIndex) => {
+          if (idx.columnIds && !idx.parts) {
+            return {
+              ...idx,
+              parts: [
+                ...idx.columnIds.map((id: string) => ({
+                  type: "column" as const,
+                  value: id,
+                  order: "ASC" as const,
+                })),
+              ],
+            };
+          }
+          return idx;
+        }),
+        checkConstraints: table.checkConstraints || [],
+      }));
+
+      const newFKs: ForeignKey[] = Array.isArray(parsed.foreignKeys)
+        ? parsed.foreignKeys
+        : [];
 
       tables.value = newTables;
       foreignKeys.value = newFKs;

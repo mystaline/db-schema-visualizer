@@ -30,7 +30,6 @@ describe("ColumnEditor Role Access (viewMode)", () => {
     expect(pkCheckbox.attributes()).toHaveProperty("disabled");
 
     // Check if 'Insert New Attribute' button is hidden
-    const addButton = wrapper.find('button:contains("Insert New Attribute")');
     // Note: wrapper.find uses CSS selectors. Usually easier to check existence.
     const allButtons = wrapper.findAll("button");
     const hasAddButton = allButtons.some(b => b.text().includes("Insert New Attribute"));

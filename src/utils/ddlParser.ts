@@ -1,4 +1,4 @@
-import type { Table, ForeignKey, TableIndex, Column, CheckConstraint } from "../stores/schemaStore";
+import type { Table, ForeignKey, Column } from "../stores/schemaStore";
 
 interface ParsedSchema {
   tables: Table[];
@@ -8,7 +8,7 @@ interface ParsedSchema {
 export function parseDDL(sql: string): ParsedSchema {
   const tables: Table[] = [];
   const foreignKeys: ForeignKey[] = [];
-  
+
   // Clean up: remove SQL comments and trim
   const cleanSql = sql
     .replace(/--.*$/gm, "")
@@ -23,7 +23,7 @@ export function parseDDL(sql: string): ParsedSchema {
   const tableIdToName = new Map<string, string>();
   const colNameToIdMap = new Map<string, Map<string, string>>(); // tableName -> colName -> colId
 
-  for (let statement of statements) {
+  for (const statement of statements) {
     // 1. CREATE TABLE
     const createTableMatch = statement.match(/CREATE\s+TABLE\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s*\(([\s\S]*)\)/i);
     if (createTableMatch) {
@@ -227,12 +227,12 @@ function parseDefault(constraints: string): string | null {
   return null;
 }
 
-function parseAction(suffix: string, type: "DELETE" | "UPDATE"): any {
+function parseAction(suffix: string, type: "DELETE" | "UPDATE"): "CASCADE" | "SET NULL" | "RESTRICT" | "NO ACTION" {
   const regex = new RegExp(`ON\\s+${type}\\s+(CASCADE|SET\\s+NULL|RESTRICT|NO\\s+ACTION)`, "i");
   const match = suffix.match(regex);
   if (match) {
     const action = match[1].toUpperCase().replace(/\s+/g, " ");
-    return action;
+    return action as "CASCADE" | "SET NULL" | "RESTRICT" | "NO ACTION";
   }
   return "NO ACTION";
 }

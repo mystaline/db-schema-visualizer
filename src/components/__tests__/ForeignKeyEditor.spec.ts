@@ -20,8 +20,6 @@ describe("ForeignKeyEditor.vue", () => {
 
     store.addColumn(t1Id);
     store.addColumn(t2Id);
-    const c1Id = store.tables[0].columns[0].id;
-    const c2Id = store.tables[1].columns[0].id;
 
     // Set column names for display checks
     store.tables[0].columns[0].name = "source_col";

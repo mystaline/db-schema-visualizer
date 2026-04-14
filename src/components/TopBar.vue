@@ -4,9 +4,11 @@ import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
 import { useTheme } from "../composables/useTheme";
 import { useHistory } from "../composables/useHistory";
-import SqlExportModal from "./SqlExportModal.vue";
-import SqlImportModal from "./SqlImportModal.vue";
+import { APP_VERSION } from "../version";
+import SqlExportModal from "./ExportModal.vue";
+import SqlImportModal from "./ImportModal.vue";
 
+const emit = defineEmits(["open-whats-new"]);
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
 const { isDark, toggleTheme } = useTheme();
@@ -889,6 +891,23 @@ const openImport = () => {
 
     <!-- Actions -->
     <div class="flex items-center gap-2 lg:gap-4">
+      <!-- Version / What's New Toggle -->
+      <button
+        class="hidden sm:flex items-center gap-2 px-3 h-8 lg:h-9 bg-secondary-800/50 hover:bg-secondary-800 border border-secondary-700/50 rounded-lg lg:rounded-xl text-[10px] font-black font-mono text-secondary-400 hover:text-primary-400 transition-all group active:scale-95"
+        title="What's New"
+        @click="emit('open-whats-new')"
+      >
+        <span class="relative flex h-1.5 w-1.5">
+          <span
+            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"
+          ></span>
+          <span
+            class="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-500"
+          ></span>
+        </span>
+        v{{ APP_VERSION }}
+      </button>
+
       <!-- Desktop Share Dropdown -->
       <div
         v-if="schemaStore.viewMode === 'full'"
@@ -1023,7 +1042,7 @@ const openImport = () => {
             d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
           />
         </svg>
-        Export SQL
+        Export Schema
       </button>
     </div>
 
@@ -1158,7 +1177,7 @@ const openImport = () => {
                     />
                   </svg>
                 </div>
-                Export PostgreSQL DDL
+                Export Schema (SQL / JSON)
               </button>
               <button
                 class="w-full flex items-center gap-4 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-success-500 transition-all"
@@ -1181,7 +1200,7 @@ const openImport = () => {
                     />
                   </svg>
                 </div>
-                Import SQL Schema
+                Import Schema (SQL / JSON)
               </button>
             </div>
 
@@ -1217,14 +1236,21 @@ const openImport = () => {
             </div>
 
             <div
-              class="p-6 bg-linear-to-br from-primary-500/10 to-primary-800/10 border border-primary-500/20 rounded-3xl flex items-center justify-between"
+              class="p-6 bg-linear-to-br from-primary-500/10 to-primary-800/10 border border-primary-500/20 rounded-3xl flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group"
+              @click="emit('open-whats-new'); isMobileMenuOpen = false"
             >
+              <div class="flex flex-col gap-0.5">
+                <span
+                  class="text-xs font-bold text-primary-400 uppercase tracking-widest"
+                  >v{{ APP_VERSION }} Active</span
+                >
+                <span
+                  class="text-[10px] text-primary-500/50 font-medium group-hover:text-primary-400 transition-colors"
+                  >What's New</span
+                >
+              </div>
               <span
-                class="text-xs font-bold text-primary-400 uppercase tracking-widest"
-                >v1.2 Active</span
-              >
-              <span
-                class="w-2 h-2 rounded-full bg-success-500 shadow-lg shadow-success-500/50"
+                class="w-2 h-2 rounded-full bg-success-500 shadow-lg shadow-success-500/50 animate-pulse"
               />
             </div>
           </div>

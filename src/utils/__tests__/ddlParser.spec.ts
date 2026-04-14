@@ -2,11 +2,12 @@ import { describe, it, expect } from "vitest";
 import { parseDDL } from "../ddlParser";
 
 // Mock crypto for randomUUID
-const g = (globalThis as any);
-if (!g.crypto) {
-  g.crypto = {
-    randomUUID: () => Math.random().toString(36).substring(2)
-  };
+if (!globalThis.crypto || !globalThis.crypto.randomUUID) {
+  Object.defineProperty(globalThis, "crypto", {
+    value: {
+      randomUUID: () => `${Math.random().toString(36).substring(2)}-${Math.random().toString(36).substring(2)}-${Math.random().toString(36).substring(2)}-${Math.random().toString(36).substring(2)}-${Math.random().toString(36).substring(2)}`
+    }
+  });
 }
 
 describe("ddlParser (Enhanced Robustness)", () => {

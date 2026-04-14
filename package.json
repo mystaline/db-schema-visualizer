@@ -1,6 +1,6 @@
 {
   "name": "db-schema-visualizer",
-  "version": "0.0.1",
+  "version": "4.2.0",
   "private": true,
   "type": "module",
   "scripts": {
