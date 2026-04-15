@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "4.2.2";
+export const APP_VERSION = "4.3.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,25 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "4.3.0",
+    date: "April 15, 2026",
+    badge: "new",
+    items: [
+      {
+        type: "feature",
+        text: "Searchable PG Type Dropdown — quickly find the right column type with a new searchable input field on top of the types list.",
+      },
+      {
+        type: "improvement",
+        text: "Bulletproof SQL Import — the DDL parser now correctly handles IF NOT EXISTS, inline REFERENCES, backticks, and schema-qualified names.",
+      },
+      {
+        type: "improvement",
+        text: "Robust Relation Resolution — the importer now perfectly maps foreign keys even if the referenced table is defined later in the SQL file.",
+      },
+    ],
+  },
   {
     version: "4.2.2",
     date: "April 15, 2026",

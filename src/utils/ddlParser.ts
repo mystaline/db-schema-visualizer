@@ -22,13 +22,20 @@ export function parseDDL(sql: string): ParsedSchema {
   const tableMap = new Map<string, Table>();
   const tableIdToName = new Map<string, string>();
   const colNameToIdMap = new Map<string, Map<string, string>>(); // tableName -> colName -> colId
+  const pendingFKs: { 
+    sourceTableName: string; 
+    sourceColName: string; 
+    targetTableName: string; 
+    targetColName: string; 
+    suffix: string;
+  }[] = [];
 
   for (const statement of statements) {
     // 1. CREATE TABLE
-    const createTableMatch = statement.match(/CREATE\s+TABLE\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s*\(([\s\S]*)\)/i);
+    const createTableMatch = statement.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_.]+))\s*\(([\s\S]*)\)/i);
     if (createTableMatch) {
-      const originalTableName = createTableMatch[1] || createTableMatch[2];
-      const body = createTableMatch[3];
+      const originalTableName = createTableMatch[1] || createTableMatch[2] || createTableMatch[3];
+      const body = createTableMatch[4];
       
       const tableId = crypto.randomUUID();
       const table: Table = {
@@ -62,6 +69,26 @@ export function parseDDL(sql: string): ParsedSchema {
           continue;
         }
 
+        // Table level FK
+        const inlineFkMatch = line.match(/(?:CONSTRAINT\s+([a-zA-Z0-9_"]+)\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(?:"([^"]+)"|([a-zA-Z0-9_.]+))\s*\(([^)]+)\)(.*)/i);
+        if (inlineFkMatch) {
+          const sourceColNames = inlineFkMatch[2].split(",").map(c => c.trim().replace(/"/g, ""));
+          const targetTableName = inlineFkMatch[3] || inlineFkMatch[4];
+          const targetColNames = inlineFkMatch[5].split(",").map(c => c.trim().replace(/"/g, ""));
+          const suffix = inlineFkMatch[6] || "";
+
+          sourceColNames.forEach((sColName, idx) => {
+            pendingFKs.push({
+              sourceTableName: originalTableName,
+              sourceColName: sColName,
+              targetTableName,
+              targetColName: targetColNames[idx],
+              suffix
+            });
+          });
+          continue;
+        }
+
         // Table level Check Constraint
         const checkMatch = line.match(/^CONSTRAINT\s+([a-zA-Z0-9_"]+)\s+CHECK\s*\((.*)\)/i) || 
                           line.match(/^CHECK\s*\((.*)\)/i);
@@ -77,10 +104,10 @@ export function parseDDL(sql: string): ParsedSchema {
         }
 
         // Column definition
-        // Extract name (handle quotes)
-        const nameMatch = line.match(/^"([^"]+)"|^\s*([a-zA-Z0-9_]+)/);
+        // Extract name (handle quotes and backticks)
+        const nameMatch = line.match(/^"([^"]+)"|^`([^`]+)`|^\s*([a-zA-Z0-9_]+)/);
         if (nameMatch) {
-          const colName = nameMatch[1] || nameMatch[2];
+          const colName = nameMatch[1] || nameMatch[2] || nameMatch[3];
           const remaining = line.slice(nameMatch[0].length).trim();
           
           // Separate type and constraints
@@ -111,6 +138,18 @@ export function parseDDL(sql: string): ParsedSchema {
             defaultValue: parseDefault(constraints),
           };
           
+          // Check for inline reference on column
+          const colRefMatch = constraints.match(/REFERENCES\s+(?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_.]+))\s*\((?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_]+))\)/i);
+          if (colRefMatch) {
+            pendingFKs.push({
+              sourceTableName: originalTableName,
+              sourceColName: colName,
+              targetTableName: colRefMatch[1] || colRefMatch[2] || colRefMatch[3],
+              targetColName: colRefMatch[4] || colRefMatch[5] || colRefMatch[6],
+              suffix: constraints.slice((colRefMatch.index ?? 0) + colRefMatch[0].length)
+            });
+          }
+
           table.columns.push(column);
           colNameToIdMap.get(originalTableName)?.set(colName, colId);
         }
@@ -120,49 +159,34 @@ export function parseDDL(sql: string): ParsedSchema {
     }
 
     // 2. ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY
-    const fkMatch = statement.match(/ALTER\s+TABLE\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s+ADD\s+CONSTRAINT\s+(?:"[^"]+"|([a-zA-Z0-9_]+))\s+FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s*\(([^)]+)\)(.*)/i);
+    const fkMatch = statement.match(/ALTER\s+TABLE\s+(?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_.]+))\s+ADD\s+CONSTRAINT\s+(?:"[^"]+"|`([^`]+)`|([a-zA-Z0-9_]+))\s+FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_.]+))\s*\(([^)]+)\)(.*)/i);
     if (fkMatch) {
-      const sourceTableName = fkMatch[1] || fkMatch[2];
-      const sourceColNames = fkMatch[4].split(",").map(c => c.trim().replace(/"/g, ""));
-      const targetTableName = fkMatch[5] || fkMatch[6];
-      const targetColNames = fkMatch[7].split(",").map(c => c.trim().replace(/"/g, ""));
-      const suffix = fkMatch[8] || "";
+      const sourceTableName = fkMatch[1] || fkMatch[2] || fkMatch[3];
+      const sourceColNames = fkMatch[6].split(",").map(c => c.trim().replace(/["`]/g, ""));
+      const targetTableName = fkMatch[7] || fkMatch[8] || fkMatch[9];
+      const targetColNames = fkMatch[10].split(",").map(c => c.trim().replace(/["`]/g, ""));
+      const suffix = fkMatch[11] || "";
 
-      const sourceTable = tableMap.get(sourceTableName);
-      const targetTable = tableMap.get(targetTableName);
-
-      if (sourceTable && targetTable) {
-        // Current system only supports single-column FKs
-        // We'll take the first one or create multiple if it makes sense (but interface is 1-1)
-        sourceColNames.forEach((sColName, idx) => {
-          const tColName = targetColNames[idx];
-          const sColId = colNameToIdMap.get(sourceTableName)?.get(sColName);
-          const tColId = colNameToIdMap.get(targetTableName)?.get(tColName);
-
-          if (sColId && tColId) {
-            foreignKeys.push({
-              id: crypto.randomUUID(),
-              sourceTableId: sourceTable.id,
-              sourceColumnId: sColId,
-              targetTableId: targetTable.id,
-              targetColumnId: tColId,
-              onDelete: parseAction(suffix, "DELETE"),
-              onUpdate: parseAction(suffix, "UPDATE"),
-            });
-          }
+      sourceColNames.forEach((sColName, idx) => {
+        pendingFKs.push({
+          sourceTableName,
+          sourceColName: sColName,
+          targetTableName,
+          targetColName: targetColNames[idx],
+          suffix
         });
-      }
+      });
       continue;
     }
 
     // 3. CREATE INDEX
-    const indexMatch = statement.match(/CREATE\s+(UNIQUE\s+)?INDEX\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s+ON\s+(?:"([^"]+)"|([a-zA-Z0-9_]+))\s*\((.*)\)(.*)/i);
+    const indexMatch = statement.match(/CREATE\s+(UNIQUE\s+)?INDEX\s+(?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_]+))\s+ON\s+(?:"([^"]+)"|`([^`]+)`|([a-zA-Z0-9_.]+))\s*\((.*)\)(.*)/i);
     if (indexMatch) {
       const isUnique = !!indexMatch[1];
-      const indexName = indexMatch[2] || indexMatch[3];
-      const tableName = indexMatch[4] || indexMatch[5];
-      const partsStr = indexMatch[6];
-      const suffix = indexMatch[7] || "";
+      const indexName = indexMatch[2] || indexMatch[3] || indexMatch[4];
+      const tableName = indexMatch[5] || indexMatch[6] || indexMatch[7];
+      const partsStr = indexMatch[8];
+      const suffix = indexMatch[9] || "";
 
       const table = tableMap.get(tableName);
       if (table) {
@@ -193,6 +217,28 @@ export function parseDDL(sql: string): ParsedSchema {
           type: isUnique ? "unique" : "normal",
           parts,
           filter: filterMatch?.[1].trim()
+        });
+      }
+    }
+  }
+
+  // Resolve pending FKs
+  for (const p of pendingFKs) {
+    const sTable = tableMap.get(p.sourceTableName);
+    const tTable = tableMap.get(p.targetTableName);
+    if (sTable && tTable) {
+      const sColId = colNameToIdMap.get(p.sourceTableName)?.get(p.sourceColName);
+      const tColId = colNameToIdMap.get(p.targetTableName)?.get(p.targetColName);
+
+      if (sColId && tColId) {
+        foreignKeys.push({
+          id: crypto.randomUUID(),
+          sourceTableId: sTable.id,
+          sourceColumnId: sColId,
+          targetTableId: tTable.id,
+          targetColumnId: tColId,
+          onDelete: parseAction(p.suffix, "DELETE"),
+          onUpdate: parseAction(p.suffix, "UPDATE"),
         });
       }
     }

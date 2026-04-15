@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, computed } from "vue";
 import { useSchemaStore, type Column } from "../stores/schemaStore";
+import TypeSelector from "./TypeSelector.vue";
 
 const schemaStore = useSchemaStore();
 const nameInputs = ref<HTMLInputElement[]>([]);
@@ -29,76 +30,7 @@ const invalidColumnIds = computed(() => {
   return invalid;
 });
 
-const dataTypes = [
-  {
-    group: "Numeric",
-    types: [
-      "smallint",
-      "int",
-      "bigint",
-      "smallserial",
-      "serial",
-      "bigserial",
-      "numeric",
-      "decimal",
-      "real",
-      "double precision",
-    ],
-  },
-  { group: "Text", types: ["varchar", "text", "char", "citext", "name"] },
-  {
-    group: "Date/Time",
-    types: ["timestamp", "timestamptz", "date", "time", "interval"],
-  },
-  {
-    group: "JSON/NoSQL",
-    types: ["jsonb", "json", "xml", "hstore"],
-  },
-  {
-    group: "Network",
-    types: ["inet", "cidr", "macaddr", "macaddr8"],
-  },
-  {
-    group: "Geometric",
-    types: ["point", "line", "lseg", "box", "path", "polygon", "circle"],
-  },
-  {
-    group: "GIS (PostGIS)",
-    types: ["geometry", "geography"],
-  },
-  {
-    group: "Arrays",
-    types: [
-      "text[]",
-      "int[]",
-      "bigint[]",
-      "numeric[]",
-      "decimal[]",
-      "real[]",
-      "double precision[]",
-      "boolean[]",
-      "uuid[]",
-      "jsonb[]",
-      "json[]",
-      "inet[]",
-      "macaddr[]",
-      "cidr[]",
-    ],
-  },
-  {
-    group: "Miscellaneous",
-    types: [
-      "boolean",
-      "uuid",
-      "bytea",
-      "money",
-      "bit",
-      "varbit",
-      "tsvector",
-      "tsquery",
-    ],
-  },
-];
+
 
 const addColumn = async () => {
   if (schemaStore.selectedTableId) {
@@ -265,30 +197,14 @@ const onDragEnd = () => {
             "
           />
 
-          <!-- Type Select -->
-          <select
-            :value="col.type"
+          <!-- Type Selector -->
+          <TypeSelector
+            :model-value="col.type"
             :disabled="schemaStore.viewMode === 'read'"
-            class="w-full bg-secondary-950 border border-secondary-800 text-[10px] rounded px-1 py-0.5 text-secondary-300 focus:border-primary-500 focus:outline-none focus:text-secondary-50 transition-colors disabled:opacity-60 disabled:cursor-default"
-            :aria-label="`Column type for ${col.name}`"
-            @click.stop
-            @change="
-              (e) =>
-                updateColumn(col.id, {
-                  type: (e.target as HTMLSelectElement).value,
-                })
+            @update:model-value="
+              (val) => updateColumn(col.id, { type: val })
             "
-          >
-            <optgroup
-              v-for="group in dataTypes"
-              :key="group.group"
-              :label="group.group"
-            >
-              <option v-for="type in group.types" :key="type" :value="type">
-                {{ type }}
-              </option>
-            </optgroup>
-          </select>
+          />
 
           <!-- PK Toggle -->
           <div class="flex justify-center">
