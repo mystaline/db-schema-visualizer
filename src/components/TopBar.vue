@@ -1023,27 +1023,48 @@ const openImport = () => {
         </svg>
       </button>
 
-      <!-- Desktop SQL Export -->
-      <button
-        v-if="schemaStore.viewMode === 'full'"
-        class="hidden lg:flex px-6 py-2.5 text-xs font-bold bg-linear-to-br from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600 text-white rounded-xl shadow-lg active:scale-95 transition-all items-center gap-2"
-        @click="openExport"
-      >
-        <svg
-          class="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      <!-- Desktop SQL Tools -->
+      <div v-if="schemaStore.viewMode === 'full'" class="hidden lg:flex items-center gap-2">
+        <button
+          class="px-4 py-2.5 text-xs font-bold bg-secondary-800/50 hover:bg-secondary-800 border border-secondary-700/50 hover:border-secondary-600 text-secondary-300 rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+          @click="openImport"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-          />
-        </svg>
-        Export Schema
-      </button>
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            />
+          </svg>
+          Import
+        </button>
+
+        <button
+          class="px-6 py-2.5 text-xs font-bold bg-linear-to-br from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600 text-white rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+          @click="openExport"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+            />
+          </svg>
+          Export Schema
+        </button>
+      </div>
     </div>
 
     <!-- Mobile Menu Overlay -->
