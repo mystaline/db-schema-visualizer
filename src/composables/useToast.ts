@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { uuid } from '../utils/uuid'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -13,7 +14,7 @@ const toasts = ref<Toast[]>([])
 
 export function useToast() {
   const toast = (message: string, type: ToastType = 'success') => {
-    const id = crypto.randomUUID()
+    const id = uuid()
     toasts.value.push({ id, message, type })
     setTimeout(() => {
       toasts.value = toasts.value.filter(t => t.id !== id)

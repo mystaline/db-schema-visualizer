@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useSchemaStore } from '../stores/schemaStore'
+import { uuid } from '../utils/uuid'
 
 const schemaStore = useSchemaStore()
 const newConstraint = ref({
@@ -42,7 +43,7 @@ const addConstraint = () => {
   const table = schemaStore.tables.find(t => t.id === schemaStore.selectedTableId)
   if (table) {
     table.checkConstraints.push({
-      id: crypto.randomUUID(),
+      id: uuid(),
       name: newConstraint.value.name.trim(),
       expression: newConstraint.value.expression.trim()
     })

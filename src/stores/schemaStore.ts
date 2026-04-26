@@ -1,6 +1,7 @@
 import { ref, computed, watch } from "vue";
 import { defineStore } from "pinia";
 import { parseDDL } from "../utils/ddlParser";
+import { uuid } from "../utils/uuid";
 
 export interface Column {
   id: string;
@@ -110,7 +111,7 @@ export const useSchemaStore = defineStore("schema", () => {
     const existingNames = tables.value.map((t) => t.name);
     const uniqueName = getUniqueName(name, existingNames);
 
-    const id = crypto.randomUUID();
+    const id = uuid();
     tables.value.push({
       id,
       name: uniqueName,
@@ -130,7 +131,7 @@ export const useSchemaStore = defineStore("schema", () => {
       const uniqueName = getUniqueName("new_column", existingColNames);
 
       table.columns.push({
-        id: crypto.randomUUID(),
+        id: uuid(),
         name: uniqueName,
         type: "varchar",
         isPrimaryKey: false,
@@ -282,7 +283,7 @@ export const useSchemaStore = defineStore("schema", () => {
   const addForeignKey = (fk: Omit<ForeignKey, "id">) => {
     foreignKeys.value.push({
       ...fk,
-      id: crypto.randomUUID(),
+      id: uuid(),
     });
   };
 
@@ -301,7 +302,7 @@ export const useSchemaStore = defineStore("schema", () => {
     const table = tables.value.find((t) => t.id === tableId);
     if (table) {
       const index: TableIndex = {
-        id: crypto.randomUUID(),
+        id: uuid(),
         ...indexData,
       };
       table.indexes.push(index);

@@ -1,4 +1,5 @@
 import type { Table, ForeignKey, Column } from "../stores/schemaStore";
+import { uuid } from "./uuid";
 
 interface ParsedSchema {
   tables: Table[];
@@ -37,7 +38,7 @@ export function parseDDL(sql: string): ParsedSchema {
       const originalTableName = createTableMatch[1] || createTableMatch[2] || createTableMatch[3];
       const body = createTableMatch[4];
       
-      const tableId = crypto.randomUUID();
+      const tableId = uuid();
       const table: Table = {
         id: tableId,
         name: originalTableName,
@@ -96,7 +97,7 @@ export function parseDDL(sql: string): ParsedSchema {
           const name = checkMatch.length === 3 ? checkMatch[1].replace(/"/g, "") : `chk_${originalTableName}_${table.checkConstraints.length + 1}`;
           const expr = checkMatch.length === 3 ? checkMatch[2] : checkMatch[1];
           table.checkConstraints.push({
-            id: crypto.randomUUID(),
+            id: uuid(),
             name,
             expression: expr.trim()
           });
@@ -127,7 +128,7 @@ export function parseDDL(sql: string): ParsedSchema {
             type = remaining;
           }
 
-          const colId = crypto.randomUUID();
+          const colId = uuid();
           const column: Column = {
             id: colId,
             name: colName,
@@ -212,7 +213,7 @@ export function parseDDL(sql: string): ParsedSchema {
         const filterMatch = suffix.match(/WHERE\s+(.*)/i);
         
         table.indexes.push({
-          id: crypto.randomUUID(),
+          id: uuid(),
           name: indexName,
           type: isUnique ? "unique" : "normal",
           parts,
@@ -232,7 +233,7 @@ export function parseDDL(sql: string): ParsedSchema {
 
       if (sColId && tColId) {
         foreignKeys.push({
-          id: crypto.randomUUID(),
+          id: uuid(),
           sourceTableId: sTable.id,
           sourceColumnId: sColId,
           targetTableId: tTable.id,
