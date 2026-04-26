@@ -105,7 +105,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
     >
       <div
         v-if="isOpen"
-        class="fixed inset-0 z-99999 flex items-center justify-center p-4 md:p-8"
+        class="fixed inset-0 z-[300000] flex items-center justify-center p-4 md:p-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="whats-new-title"
