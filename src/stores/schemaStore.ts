@@ -472,6 +472,137 @@ export const useSchemaStore = defineStore("schema", () => {
     }
   };
 
+  const loadPreset = (type: "blog" | "ecommerce") => {
+    tables.value = [];
+    foreignKeys.value = [];
+
+    if (type === "blog") {
+      const userId = uuid();
+      const postId = uuid();
+      const commentId = uuid();
+      const tagId = uuid();
+      const userPkId = uuid();
+      const postPkId = uuid();
+      const tagPkId = uuid();
+
+      tables.value.push({ id: userId, name: "profiles", x: 50, y: 50, columns: [
+        { id: userPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: uuid(), name: "username", type: "varchar(50)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "display_name", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "email", type: "varchar(255)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "meta", type: "jsonb", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: "'{}'::jsonb" },
+      ], indexes: [{ id: uuid(), name: "idx_profiles_email", type: "unique", parts: [{ type: "column", value: "email", order: "ASC" }], filter: "" }], checkConstraints: [] });
+
+      tables.value.push({ id: postId, name: "articles", x: 450, y: 50, columns: [
+        { id: postPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: uuid(), name: "author_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "slug", type: "varchar(200)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "title", type: "text", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "body", type: "text", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "view_count", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "0" },
+        { id: uuid(), name: "published_at", type: "timestamptz", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+      ], indexes: [{ id: uuid(), name: "idx_articles_slug", type: "unique", parts: [{ type: "column", value: "slug", order: "ASC" }], filter: "" }], checkConstraints: [{ id: uuid(), name: "chk_view_count_pos", expression: "view_count >= 0" }] });
+
+      tables.value.push({ id: tagId, name: "tags", x: 450, y: 500, columns: [
+        { id: tagPkId, name: "id", type: "int", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "name", type: "varchar(50)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+      ], indexes: [], checkConstraints: [] });
+
+      const bridgeId = uuid();
+      tables.value.push({ id: bridgeId, name: "article_tags", x: 800, y: 350, columns: [
+        { id: uuid(), name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: uuid(), name: "article_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "tag_id", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+      ], indexes: [], checkConstraints: [] });
+
+      const commentAuthorId = uuid();
+      const commentPostId = uuid();
+      tables.value.push({ id: commentId, name: "comments", x: 800, y: 50, columns: [
+        { id: uuid(), name: "id", type: "bigint", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null },
+        { id: commentAuthorId, name: "user_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: commentPostId, name: "article_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "content", type: "text", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "is_flagged", type: "boolean", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "false" },
+      ], indexes: [], checkConstraints: [] });
+
+      const authorCol = tables.value.find((t) => t.id === postId)!.columns.find((c) => c.name === "author_id")!;
+      addForeignKey({ sourceTableId: postId, sourceColumnId: authorCol.id, targetTableId: userId, targetColumnId: userPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({ sourceTableId: commentId, sourceColumnId: commentAuthorId, targetTableId: userId, targetColumnId: userPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({ sourceTableId: commentId, sourceColumnId: commentPostId, targetTableId: postId, targetColumnId: postPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      const bridgeCols = tables.value.find((t) => t.id === bridgeId)!.columns;
+      addForeignKey({ sourceTableId: bridgeId, sourceColumnId: bridgeCols[1].id, targetTableId: postId, targetColumnId: postPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({ sourceTableId: bridgeId, sourceColumnId: bridgeCols[2].id, targetTableId: tagId, targetColumnId: tagPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+    }
+
+    if (type === "ecommerce") {
+      const customerId = uuid();
+      const customerPkId = uuid();
+      const orderId = uuid();
+      const orderCustomerId = uuid();
+      const productId = uuid();
+      const productPkId = uuid();
+      const itemId = uuid();
+      const categoryId = uuid();
+      const categoryPkId = uuid();
+
+      tables.value.push({ id: customerId, name: "customers", x: 50, y: 50, columns: [
+        { id: customerPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: uuid(), name: "email", type: "varchar(255)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "first_name", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "last_name", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "marketing_opt_in", type: "boolean", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "true" },
+      ], indexes: [], checkConstraints: [] });
+
+      tables.value.push({ id: categoryId, name: "categories", x: 50, y: 500, columns: [
+        { id: categoryPkId, name: "id", type: "int", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "name", type: "varchar(100)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "parent_id", type: "int", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+      ], indexes: [], checkConstraints: [] });
+
+      const productCategoryId = uuid();
+      tables.value.push({ id: productId, name: "products", x: 450, y: 450, columns: [
+        { id: productPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: productCategoryId, name: "category_id", type: "int", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "sku", type: "varchar(20)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
+        { id: uuid(), name: "price", type: "numeric(12,2)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "0.00" },
+        { id: uuid(), name: "specs", type: "jsonb", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+      ], indexes: [], checkConstraints: [{ id: uuid(), name: "chk_price_positive", expression: "price > 0" }] });
+
+      tables.value.push({ id: orderId, name: "orders", x: 450, y: 50, columns: [
+        { id: uuid(), name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: orderCustomerId, name: "customer_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "order_date", type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
+        { id: uuid(), name: "total_amount", type: "numeric(12,2)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "0" },
+      ], indexes: [], checkConstraints: [] });
+
+      const itemOrderId = uuid();
+      const itemProductId = uuid();
+      tables.value.push({ id: itemId, name: "order_line_items", x: 850, y: 250, columns: [
+        { id: uuid(), name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
+        { id: itemOrderId, name: "order_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: itemProductId, name: "product_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+        { id: uuid(), name: "quantity", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "1" },
+        { id: uuid(), name: "unit_price", type: "numeric(12,2)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
+      ], indexes: [], checkConstraints: [{ id: uuid(), name: "chk_qty_pos", expression: "quantity > 0" }] });
+
+      addForeignKey({ sourceTableId: orderId, sourceColumnId: orderCustomerId, targetTableId: customerId, targetColumnId: customerPkId, onDelete: "RESTRICT", onUpdate: "CASCADE" });
+      const lineItemCols = tables.value.find((t) => t.id === itemId)!.columns;
+      addForeignKey({ sourceTableId: itemId, sourceColumnId: lineItemCols[1].id, targetTableId: orderId, targetColumnId: tables.value.find((t) => t.id === orderId)!.columns[0].id, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({ sourceTableId: itemId, sourceColumnId: lineItemCols[2].id, targetTableId: productId, targetColumnId: productPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({ sourceTableId: productId, sourceColumnId: productCategoryId, targetTableId: categoryId, targetColumnId: categoryPkId, onDelete: "SET NULL", onUpdate: "CASCADE" });
+      addForeignKey({ sourceTableId: categoryId, sourceColumnId: tables.value.find((t) => t.id === categoryId)!.columns[2].id, targetTableId: categoryId, targetColumnId: categoryPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+
+      const orders = tables.value.find((t) => t.name === "orders");
+      if (orders) {
+        const custIdCol = orders.columns.find((c) => c.name === "customer_id");
+        const dateCol = orders.columns.find((c) => c.name === "order_date");
+        if (custIdCol && dateCol) {
+          orders.indexes.push({ id: uuid(), name: "idx_orders_customer_date", type: "normal", parts: [{ type: "column", value: custIdCol.id, order: "ASC" }, { type: "column", value: dateCol.id, order: "DESC" }], filter: "" });
+        }
+      }
+    }
+  };
+
   return {
     tables,
     foreignKeys,
@@ -494,6 +625,7 @@ export const useSchemaStore = defineStore("schema", () => {
     getConstraintName,
     reorderColumns,
     removeIndex,
+    loadPreset,
     getShareableData,
     loadFromShareableData,
     loadFromLocalStorage,
