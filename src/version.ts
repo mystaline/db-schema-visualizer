@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "4.3.0";
+export const APP_VERSION = "4.4.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,29 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "4.4.0",
+    date: "April 26, 2026",
+    badge: "new",
+    items: [
+      {
+        type: "feature",
+        text: "Both sidebars are now collapsable and expandable, reclaim canvas space when you need to focus.",
+      },
+      {
+        type: "improvement",
+        text: "Creating a table now opens a modal for a cleaner experience; an empty canvas automatically prompts you to create your first table.",
+      },
+      {
+        type: "improvement",
+        text: "UUID generation falls back to a crypto-safe random value in environments where crypto.randomUUID() is unavailable.",
+      },
+      {
+        type: "fix",
+        text: "The What's New modal now always renders above all other UI layers.",
+      },
+    ],
+  },
   {
     version: "4.3.0",
     date: "April 15, 2026",
