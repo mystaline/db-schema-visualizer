@@ -7,8 +7,10 @@ import { useHistory } from "../composables/useHistory";
 import { APP_VERSION } from "../version";
 import SqlExportModal from "./ExportModal.vue";
 import SqlImportModal from "./ImportModal.vue";
+import { useCreateTableModal } from "../composables/useCreateTableModal";
 
 const emit = defineEmits(["open-whats-new"]);
+const { open: openCreateTableModal } = useCreateTableModal();
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
 const { isDark, toggleTheme } = useTheme();
@@ -1222,6 +1224,23 @@ const openImport = () => {
                   </svg>
                 </div>
                 Import Schema (SQL / JSON)
+              </button>
+            </div>
+
+            <!-- Add Table (mobile only — opens modal, closes menu) -->
+            <div v-if="schemaStore.viewMode === 'full'" class="space-y-4">
+              <span
+                class="text-[11px] font-black text-secondary-600 uppercase tracking-[0.2em] block"
+                >New Table</span
+              >
+              <button
+                class="w-full flex items-center justify-center gap-3 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-primary-500 transition-all shadow-xl"
+                @click="() => { isMobileMenuOpen = false; openCreateTableModal(true); }"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Create Table
               </button>
             </div>
 

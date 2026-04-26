@@ -10,6 +10,7 @@ import DetailPanel from "./components/DetailPanel.vue";
 import MobileSelectedTableUI from "./components/MobileSelectedTableUI.vue";
 import ToastContainer from "./components/ToastContainer.vue";
 import WhatsNewModal from "./components/WhatsNewModal.vue";
+import CreateTableModal from "./components/CreateTableModal.vue";
 
 const schemaStore = useSchemaStore();
 const { undo, redo } = useHistory();
@@ -103,6 +104,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
     <!-- What's New modal, shown on first load or after a version change -->
     <WhatsNewModal :is-open="showWhatsNew" @close="dismissWhatsNew" />
+    <CreateTableModal />
   </div>
 </template>
 

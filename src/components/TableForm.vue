@@ -2,6 +2,8 @@
 import { ref, computed } from 'vue'
 import { useSchemaStore } from '../stores/schemaStore'
 
+const props = withDefaults(defineProps<{ flat?: boolean }>(), { flat: false })
+
 const schemaStore = useSchemaStore()
 const tableName = ref('')
 const touched = ref(false)
@@ -27,7 +29,7 @@ const handleAddTable = () => {
 </script>
 
 <template>
-  <div class="px-4 py-6 border-t border-secondary-600 bg-secondary-950">
+  <div :class="flat ? '' : 'px-4 py-6 border-t border-secondary-600 bg-secondary-950'">
     <form
       class="space-y-3"
       @submit.prevent="handleAddTable"

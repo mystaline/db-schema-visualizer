@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useSchemaStore } from '../stores/schemaStore'
 import { useHistory } from '../composables/useHistory'
+import { useCreateTableModal } from '../composables/useCreateTableModal'
 import TableNode from './TableNode.vue'
 import RelationLines from './RelationLines.vue'
 
@@ -11,6 +12,7 @@ const isPanning = ref(false)
 const panOffset = ref({ x: 0, y: 0 })
 
 const { clearHistory } = useHistory()
+const { open: openCreateTableModal } = useCreateTableModal()
 
 // Hydrate on load: URL > localStorage > fresh
 const hydrateFromUrl = async () => {
@@ -46,9 +48,18 @@ const confirmDeleteTable = () => {
   pendingDeleteTable.value = false
 }
 
-onMounted(() => {
-  hydrateFromUrl()
+onMounted(async () => {
+  await hydrateFromUrl()
   window.addEventListener('keydown', handleGlobalKeyDown)
+  if (schemaStore.tables.length === 0 && schemaStore.viewMode === 'full') {
+    openCreateTableModal()
+  }
+})
+
+watch(() => schemaStore.tables.length, (newLen) => {
+  if (newLen === 0 && schemaStore.viewMode === 'full') {
+    openCreateTableModal()
+  }
 })
 
 onUnmounted(() => {
@@ -175,10 +186,10 @@ const canvasStyle = computed(() => ({
         :scale="transform.k"
       />
 
-      <!-- Center Logo if empty -->
+      <!-- Empty state watermark -->
       <div
         v-if="schemaStore.tables.length === 0"
-        class="flex flex-col items-center gap-6 opacity-20 transform -rotate-12 transition-all"
+        class="flex flex-col items-center gap-6 opacity-20 transform -rotate-12 transition-all select-none"
       >
         <div class="text-secondary-400 text-6xl font-black uppercase tracking-tighter">
           Ready for Modeling
