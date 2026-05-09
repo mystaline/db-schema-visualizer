@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "4.4.0";
+export const APP_VERSION = "4.5.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,29 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "4.5.0",
+    date: "May 9, 2026",
+    badge: "improved",
+    items: [
+      {
+        type: "improvement",
+        text: "Zoom now follows the pointer — the point under your cursor stays fixed while you scroll to zoom in or out.",
+      },
+      {
+        type: "improvement",
+        text: "Space + drag to pan the canvas from anywhere, even when hovering over tables.",
+      },
+      {
+        type: "improvement",
+        text: "Canvas cursor is now grab/grabbing, giving clear feedback when panning.",
+      },
+      {
+        type: "improvement",
+        text: "Sidebar collapse toggles are now more visible and anchored to the top of the canvas.",
+      },
+    ],
+  },
   {
     version: "4.4.0",
     date: "April 26, 2026",

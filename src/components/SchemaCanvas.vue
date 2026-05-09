@@ -10,6 +10,9 @@ const schemaStore = useSchemaStore()
 const transform = computed(() => schemaStore.canvasTransform)
 const isPanning = ref(false)
 const panOffset = ref({ x: 0, y: 0 })
+const canvasContainer = ref<HTMLElement | null>(null)
+const isSpaceDown = ref(false)
+const isSpacePanning = ref(false)
 
 const { clearHistory } = useHistory()
 const { open: openCreateTableModal } = useCreateTableModal()
@@ -48,9 +51,52 @@ const confirmDeleteTable = () => {
   pendingDeleteTable.value = false
 }
 
+const handleSpaceDown = (e: KeyboardEvent) => {
+  if (e.code === 'Space' && !e.repeat) {
+    const tag = (e.target as HTMLElement)?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+    e.preventDefault()
+    isSpaceDown.value = true
+  }
+}
+
+const handleSpaceUp = (e: KeyboardEvent) => {
+  if (e.code === 'Space') {
+    isSpaceDown.value = false
+    isSpacePanning.value = false
+  }
+}
+
+const resetSpaceState = () => {
+  isSpaceDown.value = false
+  isSpacePanning.value = false
+}
+
+const handleSpaceMouseDown = (e: MouseEvent) => {
+  if (!isSpaceDown.value || e.button !== 0) return
+  isSpacePanning.value = true
+  panOffset.value = {
+    x: e.clientX - schemaStore.canvasTransform.x,
+    y: e.clientY - schemaStore.canvasTransform.y,
+  }
+}
+
+const handleSpaceMouseMove = (e: MouseEvent) => {
+  if (!isSpacePanning.value) return
+  schemaStore.canvasTransform.x = e.clientX - panOffset.value.x
+  schemaStore.canvasTransform.y = e.clientY - panOffset.value.y
+}
+
+const handleSpaceMouseUp = () => {
+  isSpacePanning.value = false
+}
+
 onMounted(async () => {
   await hydrateFromUrl()
   window.addEventListener('keydown', handleGlobalKeyDown)
+  window.addEventListener('keydown', handleSpaceDown)
+  window.addEventListener('keyup', handleSpaceUp)
+  window.addEventListener('blur', resetSpaceState)
   if (schemaStore.tables.length === 0 && schemaStore.viewMode === 'full') {
     openCreateTableModal()
   }
@@ -64,6 +110,9 @@ watch(() => schemaStore.tables.length, (newLen) => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeyDown)
+  window.removeEventListener('keydown', handleSpaceDown)
+  window.removeEventListener('keyup', handleSpaceUp)
+  window.removeEventListener('blur', resetSpaceState)
 })
 
 const handleCanvasMouseDown = (e: MouseEvent) => {
@@ -134,7 +183,23 @@ const handleWheel = (e: WheelEvent) => {
   e.preventDefault()
   const zoomFactor = 0.05
   const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor
-  const newScale = Math.min(Math.max(0.2, schemaStore.canvasTransform.k + delta), 2)
+  const oldScale = schemaStore.canvasTransform.k
+  const newScale = Math.min(Math.max(0.2, oldScale + delta), 2)
+
+  const rect = canvasContainer.value?.getBoundingClientRect()
+  if (!rect) {
+    schemaStore.canvasTransform.k = newScale
+    return
+  }
+
+  const mouseX = e.clientX - rect.left
+  const mouseY = e.clientY - rect.top
+
+  const tx = schemaStore.canvasTransform.x
+  const ty = schemaStore.canvasTransform.y
+
+  schemaStore.canvasTransform.x = mouseX - (mouseX - tx) * (newScale / oldScale)
+  schemaStore.canvasTransform.y = mouseY - (mouseY - ty) * (newScale / oldScale)
   schemaStore.canvasTransform.k = newScale
 }
 
@@ -150,7 +215,9 @@ const canvasStyle = computed(() => ({
 
 <template>
   <div 
+    ref="canvasContainer"
     class="relative w-full h-full bg-secondary-950 overflow-hidden"
+    :class="isPanning ? 'cursor-grabbing' : 'cursor-grab'"
     @mousedown="handleCanvasMouseDown"
     @mousemove="handleCanvasMouseMove"
     @mouseup="handleCanvasMouseUp"
@@ -199,6 +266,17 @@ const canvasStyle = computed(() => ({
         </p>
       </div>
     </div>
+
+    <!-- Space-pan overlay: sits above tables, captures drag when space is held -->
+    <div
+      v-if="isSpaceDown"
+      class="absolute inset-0 z-30"
+      :class="isSpacePanning ? 'cursor-grabbing' : 'cursor-grab'"
+      @mousedown="handleSpaceMouseDown"
+      @mousemove="handleSpaceMouseMove"
+      @mouseup="handleSpaceMouseUp"
+      @mouseleave="handleSpaceMouseUp"
+    />
 
     <!-- Delete Table Confirmation -->
     <div

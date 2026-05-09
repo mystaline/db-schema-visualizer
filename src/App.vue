@@ -97,7 +97,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
         <!-- Left collapse toggle (desktop only) -->
         <button
           v-if="schemaStore.viewMode === 'full'"
-          class="hidden lg:flex absolute top-1/2 -translate-y-1/2 left-0 z-25 items-center justify-center w-4 h-12 bg-secondary-800 hover:bg-primary-600 border border-secondary-700 hover:border-primary-500 rounded-r-lg text-secondary-400 hover:text-white transition-all cursor-pointer"
+          class="hidden lg:flex absolute top-6 left-0 z-25 items-center justify-center w-5 h-10 bg-primary-600/20 hover:bg-primary-600 border border-primary-500/40 hover:border-primary-500 rounded-r-lg text-primary-400 hover:text-white transition-all cursor-pointer shadow-md"
           @click="leftCollapsed = !leftCollapsed"
           :title="leftCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         >
@@ -119,7 +119,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
         <!-- Right collapse toggle (desktop only) -->
         <button
-          class="hidden lg:flex absolute top-1/2 -translate-y-1/2 right-0 z-25 items-center justify-center w-4 h-12 bg-secondary-800 hover:bg-primary-600 border border-secondary-700 hover:border-primary-500 rounded-l-lg text-secondary-400 hover:text-white transition-all cursor-pointer"
+          class="hidden lg:flex absolute top-6 right-0 z-25 items-center justify-center w-5 h-10 bg-primary-600/20 hover:bg-primary-600 border border-primary-500/40 hover:border-primary-500 rounded-l-lg text-primary-400 hover:text-white transition-all cursor-pointer shadow-md"
           @click="rightCollapsed = !rightCollapsed"
           :title="rightCollapsed ? 'Expand panel' : 'Collapse panel'"
         >
