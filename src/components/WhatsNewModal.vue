@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from "vue";
 import { APP_VERSION, CHANGELOG } from "../version";
+import ModalShell from "./ModalShell.vue";
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits(["close"]);
@@ -22,38 +23,29 @@ const badgeLabel: Record<string, string> = {
 };
 
 const badgeColor: Record<string, string> = {
-  new: "bg-primary-100 dark:bg-primary-500/15 text-primary-950 dark:text-primary-400 border-primary-200 dark:border-primary-500/30",
-  improved:
-    "bg-info-100 dark:bg-info-500/15 text-info-950 dark:text-info-400 border-info-200 dark:border-info-500/30",
-  fix: "bg-success-100 dark:bg-success-500/15 text-success-950 dark:text-success-600 border-success-200 dark:border-success-500/30",
+  new: "bg-primary-500/15 text-primary-400 border-primary-500/30",
+  improved: "bg-info-500/15 text-info-400 border-info-500/30",
+  fix: "bg-success-500/15 text-success-600 border-success-500/30",
 };
 
 const typeMeta: Record<string, { label: string; color: string }> = {
   feature: {
     label: "New",
-    color:
-      "text-primary-950 dark:text-primary-400 bg-primary-100 dark:bg-primary-500/10 border-primary-200 dark:border-primary-500/20",
+    color: "text-primary-400 bg-primary-500/10 border-primary-500/20",
   },
   improvement: {
     label: "Improved",
-    color:
-      "text-info-950 dark:text-info-400 bg-info-100 dark:bg-info-500/10 border-info-200 dark:border-info-500/20",
+    color: "text-info-400 bg-info-500/10 border-info-500/20",
   },
   fix: {
     label: "Fix",
-    color:
-      "text-success-950 dark:text-success-600 bg-success-100 dark:bg-success-500/15 border-success-200 dark:border-success-500/30",
+    color: "text-success-600 bg-success-500/15 border-success-500/30",
   },
 };
 
 // Focus trap + ESC
 const onKeyDown = (e: KeyboardEvent) => {
   if (!props.isOpen) return;
-  if (e.key === "Escape") {
-    emit("close");
-    return;
-  }
-
   if (e.key === "Tab") {
     const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -94,43 +86,11 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition
-      enter-active-class="transition duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition duration-200 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
+  <ModalShell :is-open="isOpen" max-width="max-w-2xl" @close="emit('close')">
       <div
-        v-if="isOpen"
-        class="fixed inset-0 z-[300000] flex items-center justify-center p-4 md:p-8"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="whats-new-title"
+        ref="modalRef"
+        class="w-full max-h-[88vh] flex flex-col rounded-3xl overflow-hidden border border-secondary-800 bg-secondary-900"
       >
-        <!-- Backdrop -->
-        <div
-          class="absolute inset-0 bg-secondary-950/90 backdrop-blur-xl"
-          @click="emit('close')"
-        />
-
-        <!-- Modal -->
-        <Transition
-          appear
-          enter-active-class="transition duration-300 ease-out"
-          enter-from-class="opacity-0 scale-95 translate-y-4"
-          enter-to-class="opacity-100 scale-100 translate-y-0"
-          leave-active-class="transition duration-200 ease-in"
-          leave-from-class="opacity-100 scale-100 translate-y-0"
-          leave-to-class="opacity-0 scale-95 translate-y-4"
-        >
-          <div
-            v-if="isOpen"
-            ref="modalRef"
-            class="relative w-full max-w-2xl max-h-[88vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl dark:shadow-[0_0_100px_rgba(0,0,0,0.9)] border border-secondary-200 dark:border-secondary-800 bg-white dark:bg-secondary-900"
-          >
             <!-- Accent bar -->
             <div
               class="h-1 w-full bg-linear-to-r from-primary-500 via-info-400 to-primary-700 shrink-0"
@@ -167,12 +127,12 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
                   <div>
                     <h2
                       id="whats-new-title"
-                      class="text-xl font-black text-secondary-900 dark:text-secondary-50 tracking-tight leading-none"
+                      class="text-xl font-black text-secondary-50 tracking-tight leading-none"
                     >
                       What's New
                     </h2>
                     <p
-                      class="text-[10px] font-bold text-secondary-700 dark:text-secondary-400 uppercase tracking-[0.18em] mt-1"
+                      class="text-[10px] font-bold text-secondary-400 uppercase tracking-[0.18em] mt-1"
                     >
                       Release Notes · v{{ APP_VERSION }}
                     </p>
@@ -212,8 +172,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
                 class="rounded-2xl border overflow-hidden transition-all duration-200"
                 :class="
                   openVersion === entry.version
-                    ? 'border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/40 shadow-sm'
-                    : 'border-secondary-200 dark:border-secondary-800 bg-white dark:bg-secondary-800/20 hover:border-secondary-300 dark:hover:border-secondary-700'
+                    ? 'border-secondary-600 bg-secondary-800/40 shadow-sm'
+                    : 'border-secondary-800 bg-secondary-800/20 hover:border-secondary-700'
                 "
               >
                 <!-- Accordion trigger -->
@@ -231,7 +191,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
                     <!-- Version badge -->
                     <span
-                      class="text-sm font-black font-mono text-secondary-900 dark:text-secondary-200 shrink-0"
+                      class="text-sm font-black font-mono text-secondary-200 shrink-0"
                     >
                       v{{ entry.version }}
                     </span>
@@ -247,7 +207,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
                     <!-- Date -->
                     <span
-                      class="text-[10px] text-secondary-700 dark:text-secondary-600 font-medium truncate"
+                      class="text-[10px] text-secondary-600 font-medium truncate"
                     >
                       {{ entry.date }}
                     </span>
@@ -298,8 +258,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
                         class="text-sm leading-relaxed"
                         :class="
                           idx === 0
-                            ? 'text-secondary-950 dark:text-secondary-50 font-medium'
-                            : 'text-secondary-800 dark:text-secondary-400'
+                            ? 'text-secondary-50 font-medium'
+                            : 'text-secondary-400'
                         "
                       >
                         {{ item.text }}
@@ -312,10 +272,10 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
             <!-- Footer -->
             <div
-              class="px-8 py-5 border-t border-secondary-200 dark:border-secondary-800 bg-secondary-50/50 dark:bg-secondary-950/40 shrink-0 flex items-center justify-between"
+              class="px-8 py-5 border-t border-secondary-800 bg-secondary-950/40 shrink-0 flex items-center justify-between"
             >
               <span
-                class="text-xs text-secondary-800 dark:text-secondary-600 font-mono"
+                class="text-xs text-secondary-600 font-mono"
                 >SchemaVis · v{{ APP_VERSION }}</span
               >
               <button
@@ -325,11 +285,8 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
                 Got it 🎉
               </button>
             </div>
-          </div>
-        </Transition>
       </div>
-    </Transition>
-  </Teleport>
+  </ModalShell>
 </template>
 
 <style scoped>

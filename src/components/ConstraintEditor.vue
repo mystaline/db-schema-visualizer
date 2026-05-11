@@ -2,6 +2,7 @@
 import { ref, watch, computed } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { uuid } from "../utils/uuid";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
 const newConstraint = ref({
@@ -60,13 +61,22 @@ const addConstraint = () => {
   }
 };
 
-const removeConstraint = (index: number) => {
-  const table = schemaStore.tables.find(
-    (t) => t.id === schemaStore.selectedTableId,
-  );
-  if (table) {
-    table.checkConstraints.splice(index, 1);
+const pendingDeleteConstraintIdx = ref<number | null>(null);
+
+const requestDeleteConstraint = (index: number) => {
+  pendingDeleteConstraintIdx.value = index;
+};
+
+const confirmDeleteConstraint = () => {
+  if (pendingDeleteConstraintIdx.value !== null) {
+    const table = schemaStore.tables.find((t) => t.id === schemaStore.selectedTableId);
+    if (table) table.checkConstraints.splice(pendingDeleteConstraintIdx.value, 1);
+    pendingDeleteConstraintIdx.value = null;
   }
+};
+
+const cancelDeleteConstraint = () => {
+  pendingDeleteConstraintIdx.value = null;
 };
 </script>
 
@@ -94,8 +104,9 @@ const removeConstraint = (index: number) => {
       <div
         v-for="(constraint, idx) in schemaStore.selectedTable?.checkConstraints"
         :key="constraint.id"
-        class="bg-secondary-900/40 p-4 rounded-lg border border-secondary-800/50 group space-y-2"
+        class="bg-secondary-900/40 rounded-lg border border-secondary-800/50 group overflow-hidden"
       >
+        <div class="p-4 space-y-2">
         <div class="flex items-start justify-between gap-2">
           <span
             class="text-xs font-bold text-secondary-200 font-mono break-words"
@@ -104,7 +115,7 @@ const removeConstraint = (index: number) => {
           <button
             v-if="schemaStore.viewMode === 'full'"
             class="text-secondary-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-            @click="removeConstraint(idx)"
+            @click="requestDeleteConstraint(idx)"
           >
             <svg
               class="w-4 h-4"
@@ -129,6 +140,7 @@ const removeConstraint = (index: number) => {
           >
             CHECK ({{ constraint.expression }})
           </p>
+        </div>
         </div>
       </div>
     </div>
@@ -212,4 +224,13 @@ const removeConstraint = (index: number) => {
       </button>
     </div>
   </div>
+
+  <!-- Delete constraint confirmation modal -->
+  <ConfirmModal
+    :is-open="pendingDeleteConstraintIdx !== null"
+    title="Delete constraint?"
+    :message="pendingDeleteConstraintIdx !== null ? `'${schemaStore.selectedTable?.checkConstraints[pendingDeleteConstraintIdx]?.name}' will be permanently removed.` : undefined"
+    @confirm="confirmDeleteConstraint"
+    @cancel="cancelDeleteConstraint"
+  />
 </template>

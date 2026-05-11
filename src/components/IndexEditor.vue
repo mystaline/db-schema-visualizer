@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from "vue";
 import { useSchemaStore, type IndexPart } from "../stores/schemaStore";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
 const indexNameInputRef = ref<HTMLInputElement | null>(null);
@@ -111,6 +112,23 @@ const injectColumn = async (colName: string) => {
 
 const getColumnName = (id: string) =>
   schemaStore.selectedTable?.columns.find((c) => c.id === id)?.name || id;
+
+const pendingDeleteIndexId = ref<string | null>(null);
+
+const requestDeleteIndex = (id: string) => {
+  pendingDeleteIndexId.value = id;
+};
+
+const confirmDeleteIndex = () => {
+  if (pendingDeleteIndexId.value && schemaStore.selectedTableId) {
+    schemaStore.removeIndex(schemaStore.selectedTableId, pendingDeleteIndexId.value);
+    pendingDeleteIndexId.value = null;
+  }
+};
+
+const cancelDeleteIndex = () => {
+  pendingDeleteIndexId.value = null;
+};
 </script>
 
 <template>
@@ -137,8 +155,9 @@ const getColumnName = (id: string) =>
       <div
         v-for="idx in schemaStore.selectedTable?.indexes"
         :key="idx.id"
-        class="bg-secondary-900/40 p-4 rounded-lg border border-secondary-800/50 group"
+        class="bg-secondary-900/40 rounded-lg border border-secondary-800/50 group overflow-hidden"
       >
+        <div class="p-4">
         <div class="flex items-start justify-between gap-2 mb-2">
           <div class="flex flex-wrap items-start gap-2 flex-1 min-w-0">
             <span
@@ -154,9 +173,7 @@ const getColumnName = (id: string) =>
           <button
             v-if="schemaStore.viewMode === 'full'"
             class="text-secondary-600 hover:text-danger-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
-            @click="
-              schemaStore.removeIndex(schemaStore.selectedTableId!, idx.id)
-            "
+            @click="requestDeleteIndex(idx.id)"
           >
             <svg
               class="w-4 h-4"
@@ -199,6 +216,7 @@ const getColumnName = (id: string) =>
           class="mt-2 pt-2 border-t border-secondary-800/50 text-[10px] font-mono text-secondary-400 italic"
         >
           WHERE: {{ idx.filter }}
+        </div>
         </div>
       </div>
     </div>
@@ -432,4 +450,13 @@ const getColumnName = (id: string) =>
       </button>
     </div>
   </div>
+
+  <!-- Delete index confirmation modal -->
+  <ConfirmModal
+    :is-open="!!pendingDeleteIndexId"
+    title="Delete index?"
+    :message="pendingDeleteIndexId ? `'${schemaStore.selectedTable?.indexes.find(i => i.id === pendingDeleteIndexId)?.name}' will be permanently removed.` : undefined"
+    @confirm="confirmDeleteIndex"
+    @cancel="cancelDeleteIndex"
+  />
 </template>

@@ -2,9 +2,12 @@
 import { ref, computed, watch, nextTick } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
+import { useImportModal } from "../composables/useImportModal";
+import ModalShell from "./ModalShell.vue";
 
 const schemaStore = useSchemaStore();
 const { isOpen, closable, close } = useCreateTableModal();
+const { openImport } = useImportModal();
 
 const tableName = ref("");
 const touched = ref(false);
@@ -50,21 +53,8 @@ const handleSubmit = () => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="isOpen"
-        class="fixed top-16 bottom-0 left-0 right-0 z-[200000] flex items-center justify-center p-6"
-        @keydown.esc="closable && close()"
-      >
-        <!-- Backdrop -->
-        <div
-          class="absolute inset-0 bg-secondary-950/80 backdrop-blur-sm"
-          @click="closable && close()"
-        />
-
-        <!-- Panel -->
-        <div class="relative w-full max-w-sm bg-secondary-900 border border-secondary-700 rounded-3xl shadow-2xl p-8 space-y-6">
+  <ModalShell :is-open="isOpen" max-width="max-w-sm" :closable="closable" @close="close">
+        <div class="bg-secondary-900 border border-secondary-700 rounded-3xl shadow-2xl p-8 space-y-6">
           <div class="space-y-1">
             <h2 class="text-lg font-black uppercase tracking-tight text-secondary-50">
               New Table
@@ -73,6 +63,19 @@ const handleSubmit = () => {
               Name it like a PostgreSQL identifier.
             </p>
           </div>
+
+          <!-- Import shortcut — only shown on empty canvas -->
+          <button
+            v-if="!closable"
+            type="button"
+            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-secondary-700 text-secondary-500 text-xs font-bold hover:border-primary-500/50 hover:text-primary-400 hover:bg-primary-500/5 transition-all active:scale-95"
+            @click="close(); openImport()"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 11l3 3m0 0l3-3m-3 3V4" />
+            </svg>
+            Import existing schema instead
+          </button>
 
           <form class="space-y-4" @submit.prevent="handleSubmit">
             <div class="space-y-1.5">
@@ -119,26 +122,5 @@ const handleSubmit = () => {
             </div>
           </form>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+  </ModalShell>
 </template>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.15s ease;
-}
-.modal-enter-active .relative,
-.modal-leave-active .relative {
-  transition: transform 0.15s ease, opacity 0.15s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-enter-from .relative {
-  transform: scale(0.95) translateY(8px);
-  opacity: 0;
-}
-</style>

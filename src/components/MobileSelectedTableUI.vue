@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
+import { useToast } from "../composables/useToast";
 import ColumnEditor from "./ColumnEditor.vue";
 import ForeignKeyEditor from "./ForeignKeyEditor.vue";
 import IndexEditor from "./IndexEditor.vue";
 import ConstraintEditor from "./ConstraintEditor.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
+const { toast } = useToast();
 const activeTab = ref<"none" | "columns" | "fk" | "index" | "constraint">(
   "none",
 );
@@ -15,21 +18,27 @@ const selectedTable = computed(() =>
   schemaStore.tables.find((t) => t.id === schemaStore.selectedTableId),
 );
 
-const isConfirmingDelete = ref(false);
+const pendingDelete = ref(false);
 
 const handleDelete = () => {
-  if (isConfirmingDelete.value) {
-    if (selectedTable.value) {
-      schemaStore.removeTable(selectedTable.value.id);
-      activeTab.value = "none";
-      isConfirmingDelete.value = false;
-    }
-  } else {
-    isConfirmingDelete.value = true;
-    // Auto-cancel after 3 seconds if not clicked
-    setTimeout(() => {
-      isConfirmingDelete.value = false;
-    }, 3000);
+  pendingDelete.value = true;
+};
+
+const confirmDelete = () => {
+  if (!selectedTable.value) {
+    toast("No table selected to delete", "error");
+    pendingDelete.value = false;
+    return;
+  }
+  const id = selectedTable.value.id;
+  try {
+    schemaStore.removeTable(id);
+  } catch (e) {
+    console.error("[MobileSelectedTableUI] removeTable threw unexpectedly", e);
+    toast("Failed to delete the table. Please try again.", "error");
+  } finally {
+    activeTab.value = "none";
+    pendingDelete.value = false;
   }
 };
 
@@ -56,7 +65,7 @@ const tabs = [
 <template>
   <div
     v-if="selectedTable"
-    class="fixed inset-x-0 bottom-0 z-99902 pointer-events-none flex flex-col items-center"
+    class="fixed inset-x-0 bottom-0 z-99902 pointer-events-none flex flex-col items-center lg:hidden"
   >
     <!-- Blocking Backdrop -->
     <div
@@ -164,12 +173,7 @@ const tabs = [
       <div class="w-px bg-secondary-700 mx-0.5 self-stretch" />
 
       <button
-        class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-300 active:scale-90"
-        :class="
-          isConfirmingDelete
-            ? 'bg-danger-500 text-white animate-pulse'
-            : 'text-danger-500 hover:bg-danger-500/10'
-        "
+        class="flex-1 flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-all duration-300 active:scale-90 text-danger-500 hover:bg-danger-500/10"
         @click="handleDelete"
       >
         <svg
@@ -179,26 +183,24 @@ const tabs = [
           viewBox="0 0 24 24"
         >
           <path
-            v-if="!isConfirmingDelete"
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
             d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
           />
-          <path
-            v-else
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="3"
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
         </svg>
-        <span class="text-[9px] font-bold uppercase tracking-tighter">{{
-          isConfirmingDelete ? "Confirm" : "Delete"
-        }}</span>
+        <span class="text-[9px] font-bold uppercase tracking-tighter">Delete</span>
       </button>
     </div>
   </div>
+
+  <ConfirmModal
+    :is-open="pendingDelete"
+    title="Delete Table"
+    :message="selectedTable ? `'${selectedTable.name}' and all its columns, indexes, and foreign keys will be permanently removed.` : ''"
+    @confirm="confirmDelete"
+    @cancel="pendingDelete = false"
+  />
 </template>
 
 <style scoped>

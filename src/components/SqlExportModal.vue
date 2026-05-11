@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick, onUnmounted } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
+import ModalShell from "./ModalShell.vue";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -146,11 +147,6 @@ const downloadSql = () => {
 const onKeyDown = (e: KeyboardEvent) => {
   if (!props.isOpen) return;
 
-  if (e.key === "Escape") {
-    emit("close");
-    return;
-  }
-
   if (e.key === "Tab") {
     const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]):not([readonly]), [tabindex]:not([tabindex="-1"])',
@@ -189,24 +185,10 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="isOpen"
-      class="fixed inset-0 z-99901 flex items-center justify-center p-4 md:p-8"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-    >
-      <!-- Backdrop -->
-      <div
-        class="absolute inset-0 bg-secondary-950/90 backdrop-blur-xl"
-        @click="emit('close')"
-      />
-
-      <!-- Modal Inner -->
+  <ModalShell :is-open="isOpen" @close="emit('close')">
       <div
         ref="modalRef"
-        class="relative w-full max-w-4xl max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+        class="w-full max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl overflow-hidden flex flex-col"
       >
         <!-- Header -->
         <div
@@ -330,8 +312,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
           </button>
         </div>
       </div>
-    </div>
-  </Teleport>
+  </ModalShell>
 </template>
 
 <style scoped>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useSchemaStore, type ForeignKey } from "../stores/schemaStore";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
 
@@ -150,6 +151,23 @@ const actionOptions: ForeignKey["onDelete"][] = [
   "RESTRICT",
   "NO ACTION",
 ];
+
+const pendingDeleteFkId = ref<string | null>(null);
+
+const requestDeleteFk = (id: string) => {
+  pendingDeleteFkId.value = id;
+};
+
+const confirmDeleteFk = () => {
+  if (pendingDeleteFkId.value) {
+    schemaStore.removeForeignKey(pendingDeleteFkId.value);
+    pendingDeleteFkId.value = null;
+  }
+};
+
+const cancelDeleteFk = () => {
+  pendingDeleteFkId.value = null;
+};
 </script>
 
 <template>
@@ -242,7 +260,7 @@ const actionOptions: ForeignKey["onDelete"][] = [
                 <button
                   class="text-secondary-500 hover:text-danger-500 transition-colors p-1 rounded"
                   aria-label="Delete foreign key"
-                  @click="schemaStore.removeForeignKey(fk.id)"
+                  @click="requestDeleteFk(fk.id)"
                 >
                   <svg
                     class="w-3.5 h-3.5"
@@ -280,7 +298,7 @@ const actionOptions: ForeignKey["onDelete"][] = [
         </template>
 
         <!-- Edit mode -->
-        <template v-else>
+        <template v-else-if="editingFkId === fk.id">
           <div class="p-4 space-y-4 bg-primary-500/5">
             <div class="flex items-center justify-between">
               <span
@@ -615,4 +633,13 @@ const actionOptions: ForeignKey["onDelete"][] = [
       </button>
     </div>
   </div>
+
+  <!-- Delete FK confirmation modal -->
+  <ConfirmModal
+    :is-open="!!pendingDeleteFkId"
+    title="Delete foreign key?"
+    :message="pendingDeleteFkId ? `${getColumnName(outgoingFks.find(f => f.id === pendingDeleteFkId)?.sourceTableId ?? '', outgoingFks.find(f => f.id === pendingDeleteFkId)?.sourceColumnId ?? '')} → ${getTableName(outgoingFks.find(f => f.id === pendingDeleteFkId)?.targetTableId ?? '')} will be removed.` : undefined"
+    @confirm="confirmDeleteFk"
+    @cancel="cancelDeleteFk"
+  />
 </template>

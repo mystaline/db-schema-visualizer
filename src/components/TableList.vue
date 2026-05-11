@@ -1,21 +1,43 @@
 <script setup lang="ts">
+import { ref, computed } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
+import { useToast } from "../composables/useToast";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
+const { toast } = useToast();
 
 const selectTable = (id: string) => {
   schemaStore.selectedTableId = id;
 };
 
-const deleteTable = (id: string, name: string) => {
-  if (
-    confirm(
-      `Are you sure you want to delete table "${name}"? This cannot be undone.`,
-    )
-  ) {
-    schemaStore.removeTable(id);
-  }
+const pendingDelete = ref<{ id: string; name: string } | null>(null);
+
+const requestDelete = (id: string, name: string) => {
+  pendingDelete.value = { id, name };
 };
+
+const confirmDelete = () => {
+  if (pendingDelete.value) {
+    try {
+      schemaStore.removeTable(pendingDelete.value.id);
+    } catch (e) {
+      console.error("[TableList] removeTable threw unexpectedly", e);
+      toast("Failed to delete the table. Please try again.", "error");
+    }
+  }
+  pendingDelete.value = null;
+};
+
+const cancelDelete = () => {
+  pendingDelete.value = null;
+};
+
+const deleteMessage = computed(() =>
+  pendingDelete.value
+    ? `'${pendingDelete.value.name}' and all its columns, indexes, and foreign keys will be permanently removed.`
+    : "",
+);
 </script>
 
 <template>
@@ -57,7 +79,7 @@ const deleteTable = (id: string, name: string) => {
         </span>
         <button
           class="text-secondary-600 hover:text-danger-500 transition-colors p-1 opacity-0 group-hover:opacity-100"
-          @click.stop="deleteTable(table.id, table.name)"
+          @click.stop="requestDelete(table.id, table.name)"
         >
           <svg
             class="w-4 h-4"
@@ -100,6 +122,14 @@ const deleteTable = (id: string, name: string) => {
       </p>
     </div>
   </div>
+
+  <ConfirmModal
+    :is-open="!!pendingDelete"
+    title="Delete Table"
+    :message="deleteMessage"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
 </template>
 
 <style scoped>
