@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { useSchemaStore } from "./stores/schemaStore";
 import { useHistory } from "./composables/useHistory";
+import { useToast } from "./composables/useToast";
 import { APP_VERSION, VERSION_STORAGE_KEY } from "./version";
 import TopBar from "./components/TopBar.vue";
 import Sidebar from "./components/Sidebar.vue";
@@ -14,6 +15,7 @@ import CreateTableModal from "./components/CreateTableModal.vue";
 
 const schemaStore = useSchemaStore();
 const { undo, redo } = useHistory();
+const { toast } = useToast();
 
 const showWhatsNew = ref(false);
 const leftCollapsed = ref(false);
@@ -41,7 +43,11 @@ const onKeyDown = (e: KeyboardEvent) => {
 
 const dismissWhatsNew = () => {
   showWhatsNew.value = false;
-  localStorage.setItem(VERSION_STORAGE_KEY, APP_VERSION);
+  try {
+    localStorage.setItem(VERSION_STORAGE_KEY, APP_VERSION);
+  } catch (e) {
+    console.error("[App] Could not persist version to localStorage", e);
+  }
 };
 
 onMounted(() => {
@@ -49,15 +55,24 @@ onMounted(() => {
 
   const isEmbed = new URLSearchParams(window.location.search).has("embed");
   if (isEmbed) {
-    schemaStore.loadPreset("blog");
+    try {
+      schemaStore.loadPreset("blog");
+    } catch (e) {
+      console.error("[App] Failed to load embed preset", e);
+      toast("Failed to load the embedded schema. The canvas is empty.", "error");
+    }
     return;
   }
 
-  const stored = localStorage.getItem(VERSION_STORAGE_KEY);
-  if (stored !== APP_VERSION) {
-    setTimeout(() => {
-      showWhatsNew.value = true;
-    }, 400);
+  try {
+    const stored = localStorage.getItem(VERSION_STORAGE_KEY);
+    if (stored !== APP_VERSION) {
+      setTimeout(() => {
+        showWhatsNew.value = true;
+      }, 400);
+    }
+  } catch (e) {
+    console.warn("[App] localStorage unavailable — What's New modal suppressed", e);
   }
 });
 
@@ -149,7 +164,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
       </div>
 
       <!-- Mobile UI -->
-      <MobileSelectedTableUI class="lg:hidden" />
+      <MobileSelectedTableUI />
     </div>
 
     <!-- Global Toast Notifications -->

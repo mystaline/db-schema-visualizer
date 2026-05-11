@@ -8,15 +8,16 @@ import { APP_VERSION } from "../version";
 import SqlExportModal from "./ExportModal.vue";
 import SqlImportModal from "./ImportModal.vue";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
+import { useImportModal } from "../composables/useImportModal";
 
 const emit = defineEmits(["open-whats-new"]);
 const { open: openCreateTableModal } = useCreateTableModal();
+const { isImportOpen, openImport: _openImportModal, closeImport } = useImportModal();
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
 const { isDark, toggleTheme } = useTheme();
-const { undo, redo, canUndo, canRedo } = useHistory();
+const { undo, redo, canUndo, canRedo, clearHistory } = useHistory();
 const isExportOpen = ref(false);
-const isImportOpen = ref(false);
 const showShareMenu = ref(false);
 const isMobileMenuOpen = ref(false);
 const shareMenuRef = ref<HTMLElement | null>(null);
@@ -28,15 +29,24 @@ let presetTimer: ReturnType<typeof setTimeout> | null = null;
 const handleShare = async (permission: "full" | "read") => {
   showShareMenu.value = false;
   isMobileMenuOpen.value = false;
+
+  let base64: string;
   try {
-    const base64 = await schemaStore.getShareableData(permission);
-    const url = `${window.location.origin}${window.location.pathname}#data=${base64}`;
+    base64 = await schemaStore.getShareableData(permission);
+  } catch (err) {
+    console.error("Share URL generation failed", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    toast(`Could not generate share link: ${detail}`, "error");
+    return;
+  }
+
+  const url = `${window.location.origin}${window.location.pathname}#data=${base64}`;
+  try {
     await navigator.clipboard.writeText(url);
     const label = permission === "read" ? "Read Only" : "Full Access";
     toast(`${label} link copied to clipboard!`);
-  } catch (err) {
-    console.error("Share URL generation failed", err);
-    toast("Failed to generate share URL", "error");
+  } catch {
+    toast(`Clipboard blocked — copy this URL manually: ${url}`, "error");
   }
 };
 
@@ -70,7 +80,24 @@ const loadPreset = (type: "blog" | "ecommerce") => {
 };
 
 const executePreset = (type: "blog" | "ecommerce") => {
-  schemaStore.loadPreset(type);
+  const prevTables = JSON.parse(JSON.stringify(schemaStore.tables));
+  const prevFKs = JSON.parse(JSON.stringify(schemaStore.foreignKeys));
+  const prevTransform = { ...schemaStore.canvasTransform };
+  const prevSelected = schemaStore.selectedTableId;
+  try {
+    schemaStore.loadPreset(type);
+    clearHistory();
+  } catch (e) {
+    console.error("[TopBar] Preset load failed", e);
+    try {
+      schemaStore.restoreSnapshot(prevTables, prevFKs, prevTransform, prevSelected);
+      clearHistory();
+      toast("Could not load preset — your previous schema has been restored.", "error");
+    } catch (restoreErr) {
+      console.error("[TopBar] Schema restore after preset failure also failed", restoreErr);
+      toast("Could not load preset and schema restore failed — please refresh the page.", "error");
+    }
+  }
 };
 
 const openExport = () => {
@@ -79,7 +106,7 @@ const openExport = () => {
 };
 
 const openImport = () => {
-  isImportOpen.value = true;
+  _openImportModal();
   isMobileMenuOpen.value = false;
 };
 </script>
@@ -637,7 +664,7 @@ const openImport = () => {
     </Teleport>
 
     <SqlExportModal :is-open="isExportOpen" @close="isExportOpen = false" />
-    <SqlImportModal :is-open="isImportOpen" @close="isImportOpen = false" />
+    <SqlImportModal :is-open="isImportOpen" @close="closeImport" />
   </header>
 </template>
 

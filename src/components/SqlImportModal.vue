@@ -2,6 +2,8 @@
 import { ref, watch, nextTick, onUnmounted } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
+import ModalShell from "./ModalShell.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -17,25 +19,31 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 const importInput = ref("");
 const isDragging = ref(false);
 
+const pendingImportConfirm = ref(false);
+
 const handleImport = async () => {
   if (!importInput.value.trim()) {
     toast("Please paste some SQL or upload a file first", "error");
     return;
   }
+  if (schemaStore.tables.length > 0) {
+    pendingImportConfirm.value = true;
+    return;
+  }
+  await doImport();
+};
 
+const doImport = async () => {
+  pendingImportConfirm.value = false;
   try {
-    if (schemaStore.tables.length > 0) {
-      if (!window.confirm("This will overwrite your current schema. Are you sure you want to proceed?")) {
-        return;
-      }
-    }
     await schemaStore.importFromSql(importInput.value);
     toast("Schema imported successfully!");
     emit("close");
     importInput.value = "";
   } catch (err) {
     console.error("Import failed", err);
-    toast("Failed to parse SQL. Check your syntax.", "error");
+    const detail = err instanceof Error ? err.message : String(err);
+    toast(`SQL import failed: ${detail}`, "error");
   }
 };
 
@@ -57,12 +65,27 @@ const handleDrop = (event: DragEvent) => {
 const readFile = (file: File) => {
   if (!file.name.endsWith(".sql") && !file.name.endsWith(".txt")) {
     toast("Please upload a .sql or .txt file", "warning");
+    return;
   }
 
   const reader = new FileReader();
   reader.onload = (e) => {
-    importInput.value = (e.target?.result as string) || "";
+    const content = e.target?.result;
+    if (fileInputRef.value) fileInputRef.value.value = "";
+    if (typeof content !== "string" || !content.trim()) {
+      toast(`${file.name} appears to be empty or unreadable`, "error");
+      return;
+    }
+    importInput.value = content;
     toast(`Loaded ${file.name}`);
+  };
+  reader.onerror = () => {
+    if (fileInputRef.value) fileInputRef.value.value = "";
+    toast(`Failed to read ${file.name}`, "error");
+  };
+  reader.onabort = () => {
+    if (fileInputRef.value) fileInputRef.value.value = "";
+    toast("File read was cancelled", "warning");
   };
   reader.readAsText(file);
 };
@@ -74,11 +97,6 @@ const triggerFileSelect = () => {
 // ESC + focus trap
 const onKeyDown = (e: KeyboardEvent) => {
   if (!props.isOpen) return;
-  if (e.key === "Escape") {
-    emit("close");
-    return;
-  }
-  
   if (e.key === "Tab") {
     const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]):not([readonly]), [tabindex]:not([tabindex="-1"])',
@@ -109,6 +127,8 @@ watch(
       (modalRef.value?.querySelector("textarea") as HTMLElement)?.focus();
     } else {
       document.removeEventListener("keydown", onKeyDown);
+      pendingImportConfirm.value = false;
+      importInput.value = "";
     }
   },
 );
@@ -117,24 +137,10 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="isOpen"
-      class="fixed inset-0 z-99901 flex items-center justify-center p-4 md:p-8"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="import-title"
-    >
-      <!-- Backdrop -->
-      <div
-        class="absolute inset-0 bg-secondary-950/90 backdrop-blur-xl"
-        @click="emit('close')"
-      />
-
-      <!-- Modal Inner -->
+  <ModalShell :is-open="isOpen" :closable="!pendingImportConfirm" @close="emit('close')">
       <div
         ref="modalRef"
-        class="relative w-full max-w-4xl max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+        class="w-full max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl overflow-hidden flex flex-col"
       >
         <!-- Header -->
         <div
@@ -290,8 +296,16 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
           </button>
         </div>
       </div>
-    </div>
-  </Teleport>
+  </ModalShell>
+
+  <ConfirmModal
+    :is-open="pendingImportConfirm"
+    title="Overwrite Schema?"
+    message="This will replace your current workspace. Make sure you've exported your work first."
+    confirm-label="Overwrite"
+    @confirm="doImport"
+    @cancel="pendingImportConfirm = false"
+  />
 </template>
 
 <style scoped>

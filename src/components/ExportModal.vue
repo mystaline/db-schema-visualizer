@@ -2,6 +2,7 @@
 import { computed, ref, watch, nextTick, onUnmounted } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
+import ModalShell from "./ModalShell.vue";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -82,6 +83,8 @@ const generatedSql = computed(() => {
         sql += `  ADD CONSTRAINT fk_${sourceTable.name}_${sourceCol.name}\n`;
         sql += `  FOREIGN KEY (${sourceCol.name}) REFERENCES ${targetTable.name} (${targetCol.name})\n`;
         sql += `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};\n\n`;
+      } else {
+        sql += `-- WARNING: foreign key between ${sourceTable.name} and ${targetTable.name} was skipped (column reference is broken)\n\n`;
       }
     }
   });
@@ -112,11 +115,36 @@ const generatedSql = computed(() => {
         const uniqueStr = idx.type === "unique" ? " UNIQUE" : "";
         const whereStr = idx.filter ? ` WHERE ${idx.filter}` : "";
         sql += `CREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};\n`;
+      } else if ((idx.parts ?? []).length > 0) {
+        sql += `-- WARNING: index ${idx.name} on ${table.name} was skipped (all column references are broken)\n`;
       }
     });
   });
 
   return sql;
+});
+
+// Detect broken FK/index references so we can warn in the UI
+const hasBrokenExport = computed(() => {
+  const fkBroken = schemaStore.foreignKeys.some((fk) => {
+    const src = schemaStore.tables.find((t) => t.id === fk.sourceTableId);
+    const tgt = schemaStore.tables.find((t) => t.id === fk.targetTableId);
+    if (!src || !tgt) return true;
+    return (
+      !src.columns.find((c) => c.id === fk.sourceColumnId) ||
+      !tgt.columns.find((c) => c.id === fk.targetColumnId)
+    );
+  });
+  if (fkBroken) return true;
+  return schemaStore.tables.some((table) =>
+    table.indexes.some((idx) =>
+      (idx.parts ?? []).some(
+        (part) =>
+          part.type === "column" &&
+          !table.columns.find((c) => c.id === part.value),
+      ),
+    ),
+  );
 });
 
 // ---- JSON Generation ----
@@ -150,35 +178,30 @@ const copyToClipboard = async () => {
 };
 
 const downloadFile = () => {
-  if (activeTab.value === "sql") {
-    const blob = new Blob([generatedSql.value], { type: "text/sql" });
+  try {
+    const isSql = activeTab.value === "sql";
+    const content = isSql ? generatedSql.value : generatedJson.value;
+    const type = isSql ? "text/sql" : "application/json";
+    const filename = isSql ? "schema_export.sql" : "schema_export.json";
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "schema_export.sql";
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
-    toast("schema_export.sql downloaded!");
-  } else {
-    const blob = new Blob([generatedJson.value], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "schema_export.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast("schema_export.json downloaded!");
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    toast(`${filename} downloaded!`);
+  } catch (e) {
+    console.error("Download failed", e);
+    toast("Download failed — try copying the content instead", "error");
   }
 };
 
 // ESC + focus trap
 const onKeyDown = (e: KeyboardEvent) => {
   if (!props.isOpen) return;
-
-  if (e.key === "Escape") {
-    emit("close");
-    return;
-  }
 
   if (e.key === "Tab") {
     const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
@@ -218,28 +241,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="isOpen"
-      class="fixed inset-0 z-99901 flex items-center justify-center p-4 md:p-8"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="export-modal-title"
-    >
-      <!-- Backdrop -->
-      <div
-        class="absolute inset-0 bg-secondary-950/90 backdrop-blur-xl"
-        @click="emit('close')"
-      />
-
-      <!-- Modal Inner -->
+  <ModalShell :is-open="isOpen" @close="emit('close')">
       <div
         ref="modalRef"
-        class="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 rounded-3xl shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+        class="w-full max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl overflow-hidden flex flex-col"
       >
         <!-- Header -->
         <div
-          class="px-8 py-6 border-b border-secondary-200 dark:border-secondary-800 flex items-center justify-between bg-secondary-50 dark:bg-secondary-950/30 shrink-0"
+          class="px-8 py-6 border-b border-secondary-800 flex items-center justify-between bg-secondary-950/30 shrink-0"
         >
           <div class="flex items-center gap-4">
             <div
@@ -263,7 +272,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
             <div>
               <h3
                 id="export-modal-title"
-                class="text-xl font-bold text-secondary-900 dark:text-secondary-50 tracking-tight"
+                class="text-xl font-bold text-secondary-50 tracking-tight"
               >
                 Schema Export
               </h3>
@@ -297,7 +306,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
         <!-- Tab Switcher -->
         <div
-          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-200 dark:border-secondary-800 bg-secondary-50/50 dark:bg-secondary-950/20"
+          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-800 bg-secondary-950/20"
         >
           <button
             id="export-tab-sql"
@@ -356,8 +365,28 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-hidden p-8">
-          <div class="h-full relative group">
+        <div class="flex-1 overflow-hidden p-8 flex flex-col gap-4">
+          <!-- Empty schema warning -->
+          <div
+            v-if="schemaStore.tables.length === 0"
+            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+          >
+            <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p class="text-[11px] font-medium leading-relaxed">Your schema is empty — there is nothing to export yet.</p>
+          </div>
+          <!-- Broken reference warning -->
+          <div
+            v-if="hasBrokenExport && activeTab === 'sql'"
+            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+          >
+            <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p class="text-[11px] font-medium leading-relaxed">Some foreign keys or indexes reference columns that no longer exist and will be skipped. Check the <code class="font-mono">-- WARNING</code> comments in the SQL output.</p>
+          </div>
+          <div class="flex-1 relative group">
             <div
               class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"
               :class="
@@ -372,14 +401,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
               :aria-label="
                 activeTab === 'sql' ? 'Generated SQL Code' : 'Generated JSON'
               "
-              class="relative w-full h-full bg-white dark:bg-secondary-950 border border-secondary-200 dark:border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-800 dark:text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
+              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
             />
           </div>
         </div>
 
         <!-- Footer -->
         <div
-          class="px-8 py-6 border-t border-secondary-200 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-950/30 shrink-0 flex gap-4"
+          class="px-8 py-6 border-t border-secondary-800 bg-secondary-950/30 shrink-0 flex gap-4"
         >
           <button
             ref="copyBtnRef"
@@ -433,14 +462,10 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
           </button>
         </div>
       </div>
-    </div>
-  </Teleport>
+  </ModalShell>
 </template>
 
 <style scoped>
-.z-99901 {
-  z-index: 99901;
-}
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
 }

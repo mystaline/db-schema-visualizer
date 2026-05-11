@@ -2,6 +2,9 @@
 import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
+import { useHistory } from "../composables/useHistory";
+import ModalShell from "./ModalShell.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -11,14 +14,24 @@ const emit = defineEmits(["close"]);
 
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
+const { clearHistory } = useHistory();
 
 const modalRef = ref<HTMLElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
-const importInput = ref("");
 const isDragging = ref(false);
 
 type ImportTab = "sql" | "json";
 const activeTab = ref<ImportTab>("sql");
+
+const sqlInput = ref("");
+const jsonInput = ref("");
+const importInput = computed({
+  get: () => (activeTab.value === "sql" ? sqlInput.value : jsonInput.value),
+  set: (v: string) => {
+    if (activeTab.value === "sql") sqlInput.value = v;
+    else jsonInput.value = v;
+  },
+});
 
 const textareaPlaceholder = computed(() =>
   activeTab.value === "sql"
@@ -26,10 +39,7 @@ const textareaPlaceholder = computed(() =>
     : '{ "version": 1, "tables": [...], "foreignKeys": [...] }',
 );
 
-// Reset input when switching tabs
-watch(activeTab, () => {
-  importInput.value = "";
-});
+const pendingImportConfirm = ref(false);
 
 const handleImport = async () => {
   if (!importInput.value.trim()) {
@@ -41,41 +51,44 @@ const handleImport = async () => {
     );
     return;
   }
-
   if (schemaStore.tables.length > 0) {
-    if (
-      !window.confirm(
-        "This will overwrite your current schema. Are you sure you want to proceed?",
-      )
-    ) {
-      return;
-    }
+    pendingImportConfirm.value = true;
+    return;
   }
+  await doImport();
+};
 
+const doImport = async () => {
+  pendingImportConfirm.value = false;
   try {
     if (activeTab.value === "sql") {
       await schemaStore.importFromSql(importInput.value);
     } else {
       await schemaStore.importFromJson(importInput.value);
     }
+    clearHistory();
     toast("Schema imported successfully!");
     emit("close");
-    importInput.value = "";
+    sqlInput.value = "";
+    jsonInput.value = "";
   } catch (err) {
     console.error("Import failed", err);
+    const detail = err instanceof Error ? err.message : String(err);
     toast(
       activeTab.value === "sql"
-        ? "Failed to parse SQL. Check your syntax."
-        : "Failed to parse JSON. Ensure it's a valid schema export.",
+        ? `SQL import failed: ${detail}`
+        : `JSON import failed: ${detail}`,
       "error",
     );
   }
 };
 
+let tabWhenFileDialogOpened: ImportTab = "sql";
+
 const handleFileUpload = (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (file) {
-    readFile(file);
+    readFile(file, tabWhenFileDialogOpened);
   }
 };
 
@@ -87,37 +100,45 @@ const handleDrop = (event: DragEvent) => {
   }
 };
 
-const readFile = (file: File) => {
-  const expectedExts =
-    activeTab.value === "sql" ? [".sql", ".txt"] : [".json"];
+const readFile = (file: File, tabAtReadTime: ImportTab = activeTab.value) => {
+  const expectedExts = tabAtReadTime === "sql" ? [".sql", ".txt"] : [".json"];
   const hasValidExt = expectedExts.some((ext) => file.name.endsWith(ext));
   if (!hasValidExt) {
-    toast(
-      `Please upload a ${expectedExts.join(" or ")} file`,
-      "warning",
-    );
+    toast(`Please upload a ${expectedExts.join(" or ")} file`, "warning");
+    return;
   }
 
   const reader = new FileReader();
   reader.onload = (e) => {
-    importInput.value = (e.target?.result as string) || "";
+    const content = e.target?.result;
+    if (fileInputRef.value) fileInputRef.value.value = "";
+    if (typeof content !== "string" || !content.trim()) {
+      toast(`${file.name} appears to be empty or unreadable`, "error");
+      return;
+    }
+    if (tabAtReadTime === "sql") sqlInput.value = content;
+    else jsonInput.value = content;
     toast(`Loaded ${file.name}`);
+  };
+  reader.onerror = () => {
+    if (fileInputRef.value) fileInputRef.value.value = "";
+    toast(`Failed to read ${file.name}`, "error");
+  };
+  reader.onabort = () => {
+    if (fileInputRef.value) fileInputRef.value.value = "";
+    toast("File read was cancelled", "warning");
   };
   reader.readAsText(file);
 };
 
 const triggerFileSelect = () => {
+  tabWhenFileDialogOpened = activeTab.value;
   fileInputRef.value?.click();
 };
 
 // ESC + focus trap
 const onKeyDown = (e: KeyboardEvent) => {
   if (!props.isOpen) return;
-  if (e.key === "Escape") {
-    emit("close");
-    return;
-  }
-
   if (e.key === "Tab") {
     const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]):not([readonly]), [tabindex]:not([tabindex="-1"])',
@@ -148,7 +169,7 @@ watch(
       (modalRef.value?.querySelector("textarea") as HTMLElement)?.focus();
     } else {
       document.removeEventListener("keydown", onKeyDown);
-      importInput.value = "";
+      pendingImportConfirm.value = false;
     }
   },
 );
@@ -157,28 +178,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="isOpen"
-      class="fixed inset-0 z-99901 flex items-center justify-center p-4 md:p-8"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="import-modal-title"
-    >
-      <!-- Backdrop -->
-      <div
-        class="absolute inset-0 bg-secondary-950/90 backdrop-blur-xl"
-        @click="emit('close')"
-      />
-
-      <!-- Modal Inner -->
+  <ModalShell :is-open="isOpen" :closable="!pendingImportConfirm" @close="emit('close')">
       <div
         ref="modalRef"
-        class="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-secondary-900 border border-secondary-200 dark:border-secondary-800 rounded-3xl shadow-2xl dark:shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+        class="w-full max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl overflow-hidden flex flex-col"
       >
         <!-- Header -->
         <div
-          class="px-8 py-6 border-b border-secondary-200 dark:border-secondary-800 flex items-center justify-between bg-secondary-50 dark:bg-secondary-950/30 shrink-0"
+          class="px-8 py-6 border-b border-secondary-800 flex items-center justify-between bg-secondary-950/30 shrink-0"
         >
           <div class="flex items-center gap-4">
             <div
@@ -210,7 +217,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
             <div>
               <h3
                 id="import-modal-title"
-                class="text-xl font-bold text-secondary-900 dark:text-secondary-50 tracking-tight"
+                class="text-xl font-bold text-secondary-50 tracking-tight"
               >
                 Import Schema
               </h3>
@@ -244,7 +251,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
         <!-- Tab Switcher -->
         <div
-          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-200 dark:border-secondary-800 bg-secondary-50/50 dark:bg-secondary-950/20"
+          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-800 bg-secondary-950/20"
         >
           <button
             id="import-tab-sql"
@@ -410,14 +417,14 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
             <textarea
               v-model="importInput"
               :placeholder="textareaPlaceholder"
-              class="relative w-full h-full bg-white dark:bg-secondary-950 border border-secondary-200 dark:border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-800 dark:text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
+              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
             />
           </div>
         </div>
 
         <!-- Footer -->
         <div
-          class="px-8 py-6 border-t border-secondary-200 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-950/30 shrink-0 flex gap-4"
+          class="px-8 py-6 border-t border-secondary-800 bg-secondary-950/30 shrink-0 flex gap-4"
         >
           <button
             class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] focus:ring-2 focus:ring-secondary-500 focus:outline-none"
@@ -452,14 +459,19 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
           </button>
         </div>
       </div>
-    </div>
-  </Teleport>
+  </ModalShell>
+
+  <ConfirmModal
+    :is-open="pendingImportConfirm"
+    title="Overwrite Schema?"
+    message="This will replace your current workspace. Export your work first as SQL or JSON if you need to keep it."
+    confirm-label="Overwrite"
+    @confirm="doImport"
+    @cancel="pendingImportConfirm = false"
+  />
 </template>
 
 <style scoped>
-.z-99901 {
-  z-index: 99901;
-}
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
 }
