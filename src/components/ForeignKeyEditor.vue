@@ -168,12 +168,12 @@ const actionOptions: ForeignKey["onDelete"][] = [
     <!-- Outgoing FKs (this table -> other) -->
     <div class="space-y-2">
       <div class="flex items-center gap-2 py-1">
-        <div class="h-px flex-1 bg-secondary-600" />
+        <div class="h-px flex-1 bg-secondary-700" />
         <span
           class="text-[9px] font-bold text-secondary-500 uppercase tracking-[0.2em]"
           >Outgoing</span
         >
-        <div class="h-px flex-1 bg-secondary-600" />
+        <div class="h-px flex-1 bg-secondary-700" />
       </div>
       <p
         v-if="outgoingFks.length === 0"
@@ -184,7 +184,7 @@ const actionOptions: ForeignKey["onDelete"][] = [
       <div
         v-for="fk in outgoingFks"
         :key="fk.id"
-        class="bg-secondary-900/40 rounded-xl border border-secondary-800/50 overflow-hidden group transition-colors"
+        class="bg-secondary-900/40 rounded-lg border border-secondary-800/50 overflow-hidden group transition-colors"
         :class="editingFkId === fk.id ? 'border-primary-500/40' : ''"
       >
         <!-- Display mode -->
@@ -403,7 +403,7 @@ const actionOptions: ForeignKey["onDelete"][] = [
                   !editFk.targetTableId ||
                   !editFk.targetColumnId
                 "
-                class="flex-1 flex items-center justify-center gap-2 p-3 bg-primary-600 hover:bg-primary-500 rounded-xl text-white text-xs font-bold transition-all disabled:opacity-20 shadow-lg active:scale-95"
+                class="flex-1 flex items-center justify-center gap-2 p-3 bg-primary-500/15 hover:bg-primary-500/25 border border-primary-500/30 rounded-lg text-primary-400 hover:text-primary-300 text-xs font-semibold transition-all disabled:opacity-20 active:scale-95"
                 @click="commitEdit"
               >
                 <svg
@@ -422,7 +422,7 @@ const actionOptions: ForeignKey["onDelete"][] = [
                 Save Changes
               </button>
               <button
-                class="px-4 p-3 bg-secondary-800 hover:bg-secondary-700 rounded-xl text-secondary-300 text-xs font-bold transition-all active:scale-95"
+                class="px-4 p-3 bg-transparent hover:bg-secondary-800 border border-secondary-700 rounded-lg text-secondary-400 hover:text-secondary-200 text-xs font-semibold transition-all active:scale-95"
                 @click="cancelEdit"
               >
                 Discard
@@ -436,12 +436,12 @@ const actionOptions: ForeignKey["onDelete"][] = [
     <!-- Incoming FKs (other tables -> this) -->
     <div class="space-y-2">
       <div class="flex items-center gap-2 py-1">
-        <div class="h-px flex-1 bg-secondary-600" />
+        <div class="h-px flex-1 bg-secondary-700" />
         <span
           class="text-[9px] font-bold text-secondary-500 uppercase tracking-[0.2em]"
           >Incoming References</span
         >
-        <div class="h-px flex-1 bg-secondary-600" />
+        <div class="h-px flex-1 bg-secondary-700" />
       </div>
       <p
         v-if="incomingFks.length === 0"
@@ -452,7 +452,7 @@ const actionOptions: ForeignKey["onDelete"][] = [
       <div
         v-for="fk in incomingFks"
         :key="fk.id"
-        class="bg-secondary-900/40 px-4 py-3 rounded-xl border border-secondary-800/50 flex items-center gap-2 text-sm"
+        class="bg-secondary-900/40 px-4 py-3 rounded-lg border border-secondary-800/50 flex items-center gap-2 text-sm"
       >
         <span class="font-mono text-secondary-400"
           >{{ getTableName(fk.sourceTableId) }}.</span
@@ -481,12 +481,12 @@ const actionOptions: ForeignKey["onDelete"][] = [
     <!-- New FK Form (edit mode only) -->
     <div v-if="schemaStore.viewMode === 'full'" class="space-y-4">
       <div class="flex items-center gap-2 py-1">
-        <div class="h-px flex-1 bg-secondary-600" />
+        <div class="h-px flex-1 bg-secondary-700" />
         <span
           class="text-[9px] font-bold text-secondary-500 uppercase tracking-[0.2em]"
           >Establish Link</span
         >
-        <div class="h-px flex-1 bg-secondary-600" />
+        <div class="h-px flex-1 bg-secondary-700" />
       </div>
       <h5 class="sr-only">Establish Link</h5>
 
@@ -581,11 +581,9 @@ const actionOptions: ForeignKey["onDelete"][] = [
 
       <button
         :disabled="
-          !newFk.sourceColumnId ||
-          !newFk.targetTableId ||
-          !newFk.targetColumnId
+          !newFk.sourceColumnId || !newFk.targetTableId || !newFk.targetColumnId
         "
-        class="w-full flex items-center justify-center gap-2 p-3 bg-secondary-800 hover:bg-primary-600 rounded-xl text-secondary-50 hover:text-white text-xs font-bold transition-all disabled:opacity-20 shadow-lg group active:scale-95"
+        class="w-full flex items-center justify-center gap-2 py-2.5 border border-secondary-700 bg-transparent hover:bg-secondary-800 rounded-lg text-secondary-400 hover:text-secondary-100 text-xs font-semibold transition-all disabled:opacity-20 group active:scale-95"
         @click="addFk"
       >
         <svg

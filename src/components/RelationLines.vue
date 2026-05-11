@@ -106,13 +106,13 @@ const relations = computed(() => {
     <defs>
       <marker
         id="arrowhead"
-        markerWidth="10"
-        markerHeight="7"
-        refX="10"
-        refY="3.5"
+        markerWidth="6"
+        markerHeight="5"
+        refX="6"
+        refY="2.5"
         orient="auto"
       >
-        <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+        <polygon points="0 0, 6 2.5, 0 5" fill="currentColor" />
       </marker>
     </defs>
 

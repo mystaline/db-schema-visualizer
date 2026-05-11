@@ -2,6 +2,7 @@
 import { nextTick, ref, computed } from "vue";
 import { useSchemaStore, type Column } from "../stores/schemaStore";
 import TypeSelector from "./TypeSelector.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
 const nameInputs = ref<HTMLInputElement[]>([]);
@@ -29,8 +30,6 @@ const invalidColumnIds = computed(() => {
   }
   return invalid;
 });
-
-
 
 const addColumn = async () => {
   if (schemaStore.selectedTableId) {
@@ -99,31 +98,21 @@ const onDragEnd = () => {
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h4
-        class="text-xs font-bold text-secondary-400 uppercase tracking-widest"
-      >
-        Entity Schema
-      </h4>
-      <span class="text-xs text-secondary-400 font-medium"
-        >DEFINED COLUMNS: {{ schemaStore.selectedTable?.columns.length }}</span
-      >
+    <div class="flex items-start justify-between">
+      <div>
+        <h4
+          class="text-[10px] font-bold text-secondary-400 uppercase tracking-widest"
+        >
+          Schema
+        </h4>
+        <div class="text-sm mt-1">
+          <span class="font-semibold text-secondary-100"
+            >{{ schemaStore.selectedTable?.columns.length }} columns</span
+          >
+          <span class="text-secondary-500"> · drag to reorder</span>
+        </div>
+      </div>
     </div>
-
-    <!-- Column Headers: 5-col grid (delete is absolute overlay, not in grid) -->
-    <div
-      class="grid grid-cols-[1fr_80px_28px_28px_28px] gap-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-secondary-400 border-b border-secondary-600 pb-2"
-    >
-      <div>Name</div>
-      <div>Type</div>
-      <div class="text-center">PK</div>
-      <div class="text-center">NULL</div>
-      <div class="text-center">UNQ</div>
-    </div>
-    <p class="text-[10px] text-secondary-400 px-2 flex items-center gap-1.5">
-      <span class="inline-block w-1 h-3 bg-success-500 rounded-full" /> has
-      default value
-    </p>
 
     <!-- Column Rows -->
     <div class="space-y-2 mt-2 pb-1">
@@ -133,8 +122,8 @@ const onDragEnd = () => {
         :class="[
           invalidColumnIds.has(col.id)
             ? 'border-danger-500/50 hover:border-danger-500/70'
-            : col.defaultValue 
-              ? 'border-secondary-800/50 border-l-success-500/60 hover:border-secondary-700/50 hover:border-l-success-500/80' 
+            : col.defaultValue
+              ? 'border-secondary-800/50 border-l-success-500/60 hover:border-secondary-700/50 hover:border-l-success-500/80'
               : 'border-secondary-800/50 hover:border-secondary-700/50',
           dragOverIndex === colIdx && dragIndex !== colIdx
             ? 'border-t-primary-500 border-t-2'
@@ -148,197 +137,173 @@ const onDragEnd = () => {
         @drop="onDrop(colIdx)"
         @dragend="onDragEnd"
       >
-        <!-- Normal Row -->
-        <div
-          v-if="pendingDeleteId !== col.id"
-          class="grid items-center px-2 py-1.5"
-          :class="
-            schemaStore.viewMode === 'full'
-              ? 'grid-cols-[16px_1fr_80px_28px_28px_28px] gap-1'
-              : 'grid-cols-[1fr_80px_28px_28px_28px] gap-1.5'
-          "
-        >
-          <!-- Drag Handle (edit mode only) -->
+        <template v-if="true">
+          <!-- Row 1: drag handle + name + delete -->
           <div
-            v-if="schemaStore.viewMode === 'full'"
-            class="flex items-center justify-center cursor-grab text-secondary-600 hover:text-secondary-400"
-          >
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="9" cy="6" r="1.5" />
-              <circle cx="15" cy="6" r="1.5" />
-              <circle cx="9" cy="12" r="1.5" />
-              <circle cx="15" cy="12" r="1.5" />
-              <circle cx="9" cy="18" r="1.5" />
-              <circle cx="15" cy="18" r="1.5" />
-            </svg>
-          </div>
-          <!-- Name Input -->
-          <input
-            ref="nameInputs"
-            :value="col.name"
-            class="min-w-0 w-full bg-transparent text-sm focus:outline-none transition-colors placeholder:text-secondary-500"
+            class="grid items-center px-2 pt-2 pb-1"
             :class="
-              invalidColumnIds.has(col.id)
-                ? 'text-danger-400 focus:text-danger-300'
-                : 'text-secondary-100 focus:text-primary-400'
+              schemaStore.viewMode === 'full'
+                ? 'grid-cols-[16px_1fr_24px] gap-1.5'
+                : 'grid-cols-[1fr] gap-1.5'
             "
-            placeholder="col_name"
-            :aria-label="`Column name: ${col.name}`"
-            :readonly="schemaStore.viewMode === 'read'"
-            :title="
-              invalidColumnIds.has(col.id)
-                ? 'Invalid: use letters, digits, underscores only; no duplicates'
-                : undefined
-            "
-            @click.stop
-            @input="
-              (e) =>
-                updateColumnName(col.id, (e.target as HTMLInputElement).value)
-            "
-          />
-
-          <!-- Type Selector -->
-          <TypeSelector
-            :model-value="col.type"
-            :disabled="schemaStore.viewMode === 'read'"
-            @update:model-value="
-              (val) => updateColumn(col.id, { type: val })
-            "
-          />
-
-          <!-- PK Toggle -->
-          <div class="flex justify-center">
+          >
+            <div
+              v-if="schemaStore.viewMode === 'full'"
+              class="flex items-center justify-center cursor-grab text-secondary-600 hover:text-secondary-400"
+            >
+              <svg class="w-2.5 h-3.5" viewBox="0 0 10 14" fill="currentColor">
+                <circle cx="2.5" cy="2.5" r="1.2" />
+                <circle cx="7.5" cy="2.5" r="1.2" />
+                <circle cx="2.5" cy="7" r="1.2" />
+                <circle cx="7.5" cy="7" r="1.2" />
+                <circle cx="2.5" cy="11.5" r="1.2" />
+                <circle cx="7.5" cy="11.5" r="1.2" />
+              </svg>
+            </div>
+            <!-- Name Input -->
             <input
-              type="checkbox"
-              :checked="col.isPrimaryKey"
+              ref="nameInputs"
+              :value="col.name"
+              class="min-w-0 w-full bg-transparent text-[12.5px] font-mono focus:outline-none transition-colors placeholder:text-secondary-500"
+              :class="[
+                invalidColumnIds.has(col.id)
+                  ? 'text-danger-400 focus:text-danger-300'
+                  : 'text-secondary-100 focus:text-primary-400',
+                col.isPrimaryKey ? 'font-bold' : 'font-medium',
+              ]"
+              placeholder="col_name"
+              :aria-label="`Column name: ${col.name}`"
+              :readonly="schemaStore.viewMode === 'read'"
+              :title="
+                invalidColumnIds.has(col.id)
+                  ? 'Invalid: use letters, digits, underscores only; no duplicates'
+                  : undefined
+              "
+              @click.stop
+              @input="
+                (e) =>
+                  updateColumnName(col.id, (e.target as HTMLInputElement).value)
+              "
+            />
+            <button
+              v-if="schemaStore.viewMode === 'full'"
+              class="flex items-center justify-center text-secondary-600 hover:text-danger-500 transition-colors p-0.5"
+              :aria-label="`Delete column ${col.name}`"
+              @click="requestDelete(col.id)"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Row 2: type selector + PK / NULL / UNQ pill toggles -->
+          <div
+            class="flex items-center gap-1.5 px-2 pb-1.5"
+            :class="schemaStore.viewMode === 'full' ? 'pl-[34px]' : 'pl-2'"
+          >
+            <TypeSelector
+              :model-value="col.type"
               :disabled="schemaStore.viewMode === 'read'"
-              class="w-4 h-4 rounded bg-secondary-950 border-secondary-800 text-primary-500 focus:ring-primary-500 focus:ring-offset-secondary-950 cursor-pointer disabled:opacity-60 disabled:cursor-default accent-primary-500"
+              @update:model-value="(val) => updateColumn(col.id, { type: val })"
+            />
+            <div class="flex-1" />
+            <!-- PK pill toggle -->
+            <button
+              class="h-6 min-w-[32px] px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
+              :class="
+                col.isPrimaryKey
+                  ? 'bg-primary-500/10 border-primary-500 text-primary-400'
+                  : 'bg-transparent border-secondary-700 text-secondary-500 hover:border-secondary-500 hover:text-secondary-300'
+              "
+              :disabled="schemaStore.viewMode === 'read'"
               :aria-label="`${col.name} is primary key`"
-              @change="
-                (e) =>
-                  updateColumn(col.id, {
-                    isPrimaryKey: (e.target as HTMLInputElement).checked,
-                  })
+              @click="updateColumn(col.id, { isPrimaryKey: !col.isPrimaryKey })"
+            >
+              PK
+            </button>
+            <!-- NULL pill toggle -->
+            <button
+              class="h-6 min-w-[32px] px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
+              :class="
+                col.isNullable && !col.isPrimaryKey
+                  ? 'bg-secondary-500/10 border-secondary-500 text-secondary-300'
+                  : 'bg-transparent border-secondary-700 text-secondary-500 hover:border-secondary-500 hover:text-secondary-300'
               "
-            />
-          </div>
-
-          <!-- Nullable Toggle -->
-          <div class="flex justify-center">
-            <input
-              type="checkbox"
-              :checked="col.isNullable"
               :disabled="col.isPrimaryKey || schemaStore.viewMode === 'read'"
-              class="w-4 h-4 rounded bg-secondary-950 border-secondary-800 text-primary-500 focus:ring-primary-500 focus:ring-offset-secondary-950 cursor-pointer disabled:opacity-20 accent-primary-500"
               :aria-label="`${col.name} is nullable`"
-              @change="
-                (e) =>
-                  updateColumn(col.id, {
-                    isNullable: (e.target as HTMLInputElement).checked,
-                  })
+              @click="updateColumn(col.id, { isNullable: !col.isNullable })"
+            >
+              NULL
+            </button>
+            <!-- UNQ pill toggle -->
+            <button
+              class="h-6 min-w-[32px] px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
+              :class="
+                col.isUnique
+                  ? 'bg-danger-400/10 border-danger-400 text-danger-400'
+                  : 'bg-transparent border-secondary-700 text-secondary-500 hover:border-secondary-500 hover:text-secondary-300'
               "
-            />
-          </div>
-
-          <!-- Unique Toggle -->
-          <div class="flex justify-center">
-            <input
-              type="checkbox"
-              :checked="col.isUnique"
               :disabled="schemaStore.viewMode === 'read'"
-              class="w-4 h-4 rounded bg-secondary-950 border-secondary-800 text-primary-500 focus:ring-primary-500 focus:ring-offset-secondary-950 cursor-pointer disabled:opacity-60 disabled:cursor-default accent-primary-500"
               :aria-label="`${col.name} is unique`"
-              @change="
+              @click="updateColumn(col.id, { isUnique: !col.isUnique })"
+            >
+              UNQ
+            </button>
+          </div>
+
+          <!-- Row 3: default value (always visible) -->
+          <div
+            class="flex items-center gap-2 px-2 pb-2"
+            :class="schemaStore.viewMode === 'full' ? 'pl-[34px]' : 'pl-2'"
+            @click.stop
+          >
+            <span
+              class="text-[9px] font-bold text-secondary-500 uppercase tracking-wider shrink-0"
+              >DEFAULT</span
+            >
+            <input
+              :value="col.defaultValue ?? ''"
+              type="text"
+              placeholder="e.g. now(), gen_random_uuid(), 'active'"
+              class="flex-1 min-w-0 bg-secondary-950 border border-secondary-800 rounded px-2 py-0.5 text-[10px] font-mono text-secondary-200 focus:border-primary-500 focus:outline-none transition-colors placeholder:text-secondary-600"
+              :readonly="schemaStore.viewMode === 'read'"
+              @input="
                 (e) =>
                   updateColumn(col.id, {
-                    isUnique: (e.target as HTMLInputElement).checked,
+                    defaultValue: (e.target as HTMLInputElement).value || null,
                   })
               "
             />
+            <!-- Green dot marker when default is set -->
+            <span
+              v-if="col.defaultValue"
+              class="w-2 h-2 rounded-full bg-success-500 shrink-0"
+              title="Has default value"
+            />
           </div>
-        </div>
-
-        <!-- Delete Confirmation Row -->
-        <div
-          v-if="pendingDeleteId === col.id"
-          class="flex items-center justify-between px-3 py-2 bg-danger-500/5 border-danger-500/20"
-          role="alert"
-        >
-          <span class="text-xs text-secondary-50 font-medium"
-            >Delete <span class="font-bold text-danger-500">{{ col.name }}</span
-            >?</span
-          >
-          <div class="flex gap-2">
-            <button
-              class="px-3 py-1 text-[10px] font-bold bg-danger-500/10 hover:bg-danger-500/20 text-danger-500 rounded-lg transition-colors focus:outline-none focus:ring-1 focus:ring-danger-500"
-              @click="confirmDelete"
-            >
-              Delete
-            </button>
-            <button
-              class="px-3 py-1 text-[10px] font-bold bg-secondary-800 hover:bg-secondary-700 text-secondary-300 rounded-lg transition-colors focus:outline-none focus:ring-1 focus:ring-secondary-500"
-              @click="cancelDelete"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-
-        <!-- Expanded Row: Default Value + Delete -->
-        <div
-          v-if="pendingDeleteId !== col.id"
-          class="px-2 pb-1.5 flex items-center gap-1.5"
-          @click.stop
-        >
-          <span
-            class="text-[9px] font-bold text-secondary-500 uppercase shrink-0"
-            >DEFAULT</span
-          >
-          <input
-            :value="col.defaultValue ?? ''"
-            type="text"
-            placeholder="e.g. now(), gen_random_uuid(), 'active'"
-            class="flex-1 min-w-0 bg-secondary-950 border border-secondary-800 rounded px-2 py-0.5 text-[10px] text-secondary-200 focus:border-primary-500 focus:outline-none transition-colors"
-            :readonly="schemaStore.viewMode === 'read'"
-            @input="
-              (e) =>
-                updateColumn(col.id, {
-                  defaultValue: (e.target as HTMLInputElement).value || null,
-                })
-            "
-          />
-          <button
-            v-if="schemaStore.viewMode === 'full'"
-            class="shrink-0 text-secondary-400 hover:text-danger-500 transition-colors p-1 rounded cursor-pointer"
-            :aria-label="`Delete column ${col.name}`"
-            @click="requestDelete(col.id)"
-          >
-            <svg
-              class="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
-        </div>
+        </template>
       </div>
     </div>
 
     <!-- Add Column Button (edit mode only) -->
     <button
       v-if="schemaStore.viewMode === 'full'"
-      class="w-full flex items-center justify-center gap-2 p-3 border border-secondary-800 bg-secondary-900/50 hover:bg-secondary-800 rounded-xl text-secondary-300 hover:text-secondary-100 text-xs font-bold transition-all group focus:outline-none focus:ring-2 focus:ring-primary-500"
+      class="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-secondary-700 bg-secondary-900/40 hover:bg-secondary-800/60 hover:border-secondary-500 rounded-lg text-secondary-400 hover:text-secondary-200 text-xs font-medium transition-all group focus:outline-none focus:ring-1 focus:ring-primary-500"
       @click="addColumn"
     >
       <svg
-        class="w-4 h-4 group-hover:scale-110 transition-transform text-primary-500"
+        class="w-4 h-4 group-hover:scale-110 transition-transform"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -351,7 +316,16 @@ const onDragEnd = () => {
           d="M12 4v16m8-8H4"
         />
       </svg>
-      Insert New Attribute
+      Add column
     </button>
   </div>
+
+  <!-- Delete column confirmation modal -->
+  <ConfirmModal
+    :is-open="!!pendingDeleteId"
+    :title="`Delete column?`"
+    :message="pendingDeleteId ? `'${schemaStore.selectedTable?.columns.find(c => c.id === pendingDeleteId)?.name}' will be permanently removed.` : undefined"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
 </template>

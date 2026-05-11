@@ -1,50 +1,62 @@
 <script setup lang="ts">
-import { useSchemaStore } from '../stores/schemaStore'
+import { useSchemaStore } from "../stores/schemaStore";
 
-const schemaStore = useSchemaStore()
+const schemaStore = useSchemaStore();
 
 const selectTable = (id: string) => {
-  schemaStore.selectedTableId = id
-}
+  schemaStore.selectedTableId = id;
+};
 
 const deleteTable = (id: string, name: string) => {
-  if (confirm(`Are you sure you want to delete table "${name}"? This cannot be undone.`)) {
-    schemaStore.removeTable(id)
+  if (
+    confirm(
+      `Are you sure you want to delete table "${name}"? This cannot be undone.`,
+    )
+  ) {
+    schemaStore.removeTable(id);
   }
-}
+};
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto p-4 space-y-2">
-    <div 
-      v-for="table in schemaStore.tables" 
+  <div class="flex-1 overflow-y-auto py-2 no-scrollbar">
+    <div
+      v-for="table in schemaStore.tables"
       :key="table.id"
-      class="flex items-center gap-3 p-3 rounded-xl cursor-pointer group transition-all duration-300 border"
+      class="flex items-center gap-3 px-4 py-2 cursor-pointer group transition-colors"
       :class="[
-        schemaStore.selectedTableId === table.id 
-          ? 'bg-primary-500/10 border-primary-500/50 shadow-[0_0_15px_rgba(0,158,255,0.1)]' 
-          : 'bg-secondary-800/30 border-secondary-800 hover:border-secondary-700 hover:bg-secondary-800/50'
+        schemaStore.selectedTableId === table.id
+          ? 'bg-primary-500/10 text-secondary-50'
+          : 'hover:bg-secondary-800/50',
       ]"
       @click="selectTable(table.id)"
     >
-      <div 
-        class="w-1.5 h-1.5 rounded-full transition-colors"
-        :class="schemaStore.selectedTableId === table.id ? 'bg-primary-500 shadow-[0_0_8px_#009eff]' : 'bg-secondary-600 group-hover:bg-secondary-400'"
+      <div
+        class="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
+        :class="
+          schemaStore.selectedTableId === table.id
+            ? 'bg-primary-500'
+            : 'bg-secondary-600 group-hover:bg-secondary-400'
+        "
       />
-      
-      <span 
-        class="text-sm font-medium transition-colors"
-        :class="schemaStore.selectedTableId === table.id ? 'text-secondary-50' : 'text-secondary-300 group-hover:text-secondary-50'"
+
+      <span
+        class="text-sm font-medium transition-colors truncate flex-1"
+        :class="
+          schemaStore.selectedTableId === table.id
+            ? 'text-secondary-50'
+            : 'text-secondary-300 group-hover:text-secondary-100'
+        "
       >
         {{ table.name }}
       </span>
 
-      <div class="ml-auto flex items-center gap-2">
-        <span class="text-[10px] font-mono text-secondary-500 px-1.5 py-0.5 bg-secondary-900/50 rounded border border-secondary-800">
+      <div class="ml-auto flex items-center gap-2 shrink-0">
+        <span class="text-[10px] font-mono text-secondary-500">
           {{ table.columns.length }}
         </span>
-        <button 
-          class="text-secondary-500 hover:text-danger-500 transition-colors p-1"
+        <button
+          class="text-secondary-600 hover:text-danger-500 transition-colors p-1 opacity-0 group-hover:opacity-100"
           @click.stop="deleteTable(table.id, table.name)"
         >
           <svg
@@ -65,11 +77,10 @@ const deleteTable = (id: string, name: string) => {
     </div>
 
     <!-- Empty State -->
-    <div
-      v-if="schemaStore.tables.length === 0"
-      class="py-12 px-4 text-center"
-    >
-      <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-secondary-800/50 text-secondary-400 mb-4">
+    <div v-if="schemaStore.tables.length === 0" class="py-12 px-4 text-center">
+      <div
+        class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-secondary-800/50 text-secondary-400 mb-4"
+      >
         <svg
           class="w-6 h-6"
           fill="none"
@@ -85,8 +96,18 @@ const deleteTable = (id: string, name: string) => {
         </svg>
       </div>
       <p class="text-xs text-secondary-400 font-medium leading-relaxed">
-        No tables found.<br>Define your first entity below.
+        No tables found.<br />Define your first entity below.
       </p>
     </div>
   </div>
 </template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>

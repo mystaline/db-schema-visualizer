@@ -70,7 +70,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
   >
     <!-- Top Bar -->
     <TopBar
-      class="flex-none h-16 border-b border-secondary-800 bg-secondary-900/80 backdrop-blur-md z-30"
+      class="flex-none h-14 border-b border-secondary-700 bg-secondary-950/90 backdrop-blur-md z-30"
       @open-whats-new="showWhatsNew = true"
     />
 
@@ -81,7 +81,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
       <!-- Left Sidebar (full mode + desktop only) -->
       <div
         v-if="schemaStore.viewMode === 'full'"
-        class="hidden lg:flex flex-none border-r border-secondary-600 bg-secondary-900/50 backdrop-blur-sm z-20 overflow-hidden transition-[width] duration-200"
+        class="hidden lg:flex flex-none border-r border-secondary-700 bg-secondary-950 z-20 overflow-hidden transition-[width] duration-200"
         :class="leftCollapsed ? 'w-0 border-r-0' : 'w-72'"
       >
         <Sidebar class="w-72 flex-none" />
@@ -142,7 +142,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
       <!-- Right Detail Panel (desktop only) -->
       <div
-        class="hidden lg:flex flex-none border-l border-secondary-600 bg-secondary-900/80 backdrop-blur-md z-20 overflow-hidden transition-[width] duration-200"
+        class="hidden lg:flex flex-none border-l border-secondary-700 bg-secondary-950 z-20 overflow-hidden transition-[width] duration-200"
         :class="rightCollapsed ? 'w-0 border-l-0' : 'w-96'"
       >
         <DetailPanel class="w-96 flex-none" />

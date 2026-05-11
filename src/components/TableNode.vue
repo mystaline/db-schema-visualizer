@@ -59,7 +59,7 @@ const handleMouseUp = () => {
 };
 
 const handleMouseDown = (e: MouseEvent) => {
-  if (schemaStore.viewMode === 'read') {
+  if (schemaStore.viewMode === "read") {
     selectTable();
     return;
   }
@@ -82,7 +82,9 @@ const handleMouseDown = (e: MouseEvent) => {
 };
 
 const handleTouchStart = (e: TouchEvent) => {
-  if (schemaStore.viewMode === 'read') {
+  if (e.touches.length >= 2) return; // let canvas handle pinch-to-zoom
+
+  if (schemaStore.viewMode === "read") {
     selectTable();
     return;
   }
@@ -127,14 +129,14 @@ const handleTouchUp = () => {
 };
 
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Enter' || e.key === ' ') {
+  if (e.key === "Enter" || e.key === " ") {
     e.preventDefault();
     selectTable();
   }
 };
 
 const startRename = async () => {
-  if (schemaStore.viewMode === 'read') return;
+  if (schemaStore.viewMode === "read") return;
   renameValue.value = props.table.name;
   isRenaming.value = true;
   await nextTick();
@@ -180,81 +182,103 @@ onUnmounted(() => {
     @keydown="handleKeyDown"
   >
     <div
-      class="min-w-[200px] bg-secondary-900 border-2 rounded-xl shadow-2xl overflow-hidden transition-[border-color,transform,box-shadow] duration-300 focus-within:ring-2 focus-within:ring-primary-500/50"
+      class="min-w-[200px] bg-secondary-900 border rounded-xl overflow-hidden transition-[border-color,box-shadow] duration-200"
       :class="[
         isSelected
-          // shadow color: primary-400 (#009eff) at 20% opacity — hardcoded because
-          // Tailwind arbitrary values cannot interpolate CSS custom properties at build time
-          ? 'border-primary-500 scale-105 shadow-[0_0_30px_rgba(0,158,255,0.2)]'
-          : 'border-secondary-800 hover:border-secondary-700',
+          ? 'border-primary-500 shadow-[0_0_0_3px_rgba(0,120,230,0.12),0_12px_28px_-8px_rgba(0,0,0,0.3)]'
+          : 'border-secondary-700 shadow-[0_1px_3px_rgba(0,0,0,0.15),0_8px_24px_-8px_rgba(0,0,0,0.25)] hover:border-secondary-600',
       ]"
     >
       <!-- Table Header -->
       <div
-        class="px-4 py-2 flex items-center justify-between border-b"
+        class="px-3.5 py-2 flex items-center justify-between border-b"
         :class="
           isSelected
             ? 'bg-primary-500/10 border-primary-500/30'
-            : 'bg-secondary-800/50 border-secondary-800'
+            : 'bg-secondary-800/40 border-secondary-700'
         "
       >
-        <input
-          v-if="isRenaming"
-          ref="renameInput"
-          v-model="renameValue"
-          class="text-xs font-bold text-secondary-50 font-mono tracking-wider bg-transparent border-b border-primary-500 focus:outline-none w-full"
-          @blur="commitRename"
-          @keydown.enter="commitRename"
-          @keydown.escape="cancelRename"
-          @mousedown.stop
-        >
-        <span
-          v-else
-          class="text-xs font-bold text-secondary-50 font-mono tracking-wider cursor-text"
-          :title="schemaStore.viewMode === 'full' ? 'Double-click to rename' : undefined"
-          @dblclick.stop="startRename"
-        >{{ table.name }}</span>
-        <span class="text-[9px] font-mono text-secondary-500 shrink-0">{{ table.columns.length }} col</span>
+        <div class="flex items-center gap-2 min-w-0">
+          <span
+            class="w-2 h-2 rounded-full shrink-0 transition-colors"
+            :class="isSelected ? 'bg-primary-500' : 'bg-secondary-500'"
+          />
+          <input
+            v-if="isRenaming"
+            ref="renameInput"
+            v-model="renameValue"
+            class="text-xs font-bold text-secondary-50 font-mono tracking-tight bg-transparent border-b border-primary-500 focus:outline-none w-full"
+            @blur="commitRename"
+            @keydown.enter="commitRename"
+            @keydown.escape="cancelRename"
+            @mousedown.stop
+          />
+          <span
+            v-else
+            class="text-xs font-bold text-secondary-50 font-mono tracking-tight cursor-text truncate"
+            :title="
+              schemaStore.viewMode === 'full'
+                ? 'Double-click to rename'
+                : undefined
+            "
+            @dblclick.stop="startRename"
+            >{{ table.name }}</span
+          >
+        </div>
+        <span class="text-[9px] font-mono text-secondary-500 shrink-0 ml-2">{{
+          table.columns.length
+        }}</span>
       </div>
 
       <!-- Columns List -->
-      <div class="p-1.5 space-y-0.5 bg-secondary-800/20">
+      <div>
         <div
           v-for="col in table.columns"
           :key="col.id"
-          class="px-3 py-1.5 flex items-center justify-between group hover:bg-secondary-800/30 rounded-md transition-colors"
+          class="px-3.5 py-[5px] flex items-center justify-between border-b border-secondary-800/60 last:border-b-0 hover:bg-secondary-800/30 transition-colors"
         >
-          <div class="flex items-center gap-2 min-w-0">
+          <div class="flex items-center gap-1.5 min-w-0">
             <span
               v-if="col.isPrimaryKey"
               title="Primary Key"
               aria-label="Primary Key"
-              class="text-warning-400 text-[10px] shrink-0"
-            >🔑</span>
-            <span
-              class="text-[11px] font-medium tracking-tight truncate"
-              :class="col.isPrimaryKey ? 'text-secondary-50' : 'text-secondary-300'"
+              class="text-[8px] font-bold font-mono px-1 py-0.5 bg-primary-500/15 text-primary-400 rounded-[3px] shrink-0 leading-none"
+              >PK</span
             >
-              {{ col.name }}
-            </span>
+            <span
+              v-else-if="col.isUnique"
+              title="Unique"
+              class="text-[8px] font-bold font-mono px-1 py-0.5 bg-danger-500/10 text-danger-400 rounded-[3px] shrink-0 leading-none"
+              >U</span
+            >
+            <span v-else class="w-[18px] shrink-0" />
+            <span
+              class="text-[11px] font-mono tracking-tight truncate"
+              :class="
+                col.isPrimaryKey
+                  ? 'text-secondary-50 font-bold'
+                  : 'text-secondary-300'
+              "
+              >{{ col.name }}</span
+            >
           </div>
-          <span class="text-[9px] font-mono text-secondary-400 uppercase shrink-0 ml-2">{{
-            col.type
-          }}</span>
+          <span
+            class="text-[10px] font-mono text-secondary-500 shrink-0 ml-2"
+            >{{ col.type }}</span
+          >
         </div>
 
-        <div
-          v-if="table.columns.length === 0"
-          class="py-4 text-center"
-        >
-          <span class="text-[10px] text-secondary-500 italic">No attributes defined</span>
+        <div v-if="table.columns.length === 0" class="py-4 text-center">
+          <span class="text-[10px] text-secondary-500 italic"
+            >No columns defined</span
+          >
         </div>
       </div>
 
       <!-- Indexes/FK Indicators (Mini) -->
       <div
         v-if="table.indexes.length > 0 || table.checkConstraints.length > 0"
-        class="px-3 py-1.5 border-t border-secondary-800 flex flex-wrap gap-2"
+        class="px-3.5 py-1.5 border-t border-secondary-700 flex flex-wrap gap-2"
       >
         <span
           v-if="table.indexes.length > 0"

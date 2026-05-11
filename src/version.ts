@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "4.5.0";
+export const APP_VERSION = "4.6.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,37 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "4.6.0",
+    date: "May 11, 2026",
+    badge: "improved",
+    items: [
+      {
+        type: "improvement",
+        text: "Visual overhaul — darker, higher-contrast palette with tighter spacing across the entire app.",
+      },
+      {
+        type: "improvement",
+        text: "Column editor redesigned as compact cards — type, nullability, uniqueness, and default value all visible at a glance.",
+      },
+      {
+        type: "improvement",
+        text: "Deleting a column, constraint, index, or foreign key now shows a confirmation dialog instead of removing it immediately.",
+      },
+      {
+        type: "improvement",
+        text: "Rename a table directly in the detail panel header — double-click the name to edit.",
+      },
+      {
+        type: "improvement",
+        text: "Pinch-to-zoom is more precise — scale now tracks incremental finger distance rather than jumping from the initial spread.",
+      },
+      {
+        type: "improvement",
+        text: "Zoom HUD shows the current zoom percentage and is centred at the bottom of the canvas.",
+      },
+    ],
+  },
   {
     version: "4.5.0",
     date: "May 9, 2026",

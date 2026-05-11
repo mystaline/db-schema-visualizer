@@ -91,10 +91,10 @@ const openImport = () => {
     <div class="flex items-center gap-4 lg:gap-6">
       <div class="flex items-center gap-3">
         <div
-          class="w-10 h-10 rounded-2xl bg-linear-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20 active:scale-95 transition-transform cursor-pointer"
+          class="w-7 h-7 rounded-lg bg-linear-to-br from-primary-500 to-primary-700 flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
         >
           <svg
-            class="w-6 h-6 text-white"
+            class="w-4 h-4 text-white"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -108,14 +108,14 @@ const openImport = () => {
           </svg>
         </div>
         <h1
-          class="text-xl font-bold tracking-tight text-secondary-50 font-mono uppercase"
+          class="text-[15px] font-bold tracking-tight text-secondary-50 font-mono uppercase"
         >
           <span class="hidden sm:inline">SCHEMA</span
           ><span class="text-primary-400">VIS</span>
         </h1>
       </div>
 
-      <div class="hidden lg:block h-6 w-px bg-secondary-800" />
+      <div class="hidden lg:block h-5 w-px bg-secondary-700" />
 
       <!-- View Only Badge -->
       <div
@@ -158,7 +158,7 @@ const openImport = () => {
         </button>
       </div>
 
-      <div class="hidden sm:block w-px h-6 bg-secondary-800 mx-1" />
+      <div class="hidden sm:block w-px h-5 bg-secondary-700 mx-1" />
 
       <!-- Undo / Redo (Unified Visibility) -->
       <div
@@ -167,7 +167,7 @@ const openImport = () => {
       >
         <button
           :disabled="!canUndo"
-          class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 disabled:opacity-20 active:scale-90 transition-all"
+          class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-secondary-800 border border-transparent hover:border-secondary-700 text-secondary-400 disabled:opacity-25 active:scale-90 transition-all"
           aria-label="Undo"
           @click="undo"
         >
@@ -187,7 +187,7 @@ const openImport = () => {
         </button>
         <button
           :disabled="!canRedo"
-          class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 disabled:opacity-20 active:scale-90 transition-all"
+          class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-secondary-800 border border-transparent hover:border-secondary-700 text-secondary-400 disabled:opacity-25 active:scale-90 transition-all"
           aria-label="Redo"
           @click="redo"
         >
@@ -212,7 +212,7 @@ const openImport = () => {
     <div class="flex items-center gap-2 lg:gap-4">
       <!-- Version / What's New Toggle -->
       <button
-        class="hidden sm:flex items-center gap-2 px-3 h-8 lg:h-9 bg-secondary-100 dark:bg-secondary-800/50 hover:bg-secondary-200 dark:hover:bg-secondary-800 border border-secondary-200 dark:border-secondary-700/50 rounded-lg lg:rounded-xl text-[10px] font-black font-mono text-secondary-800 dark:text-secondary-400 hover:text-primary-500 dark:hover:text-primary-400 transition-all group active:scale-95 shadow-sm dark:shadow-none"
+        class="hidden sm:flex items-center gap-2 px-3 h-8 lg:h-9 bg-secondary-900 hover:bg-secondary-800 border border-secondary-700 rounded-lg lg:rounded-xl text-[10px] font-black font-mono text-secondary-300 hover:text-primary-400 transition-all group active:scale-95"
         title="What's New"
         @click="emit('open-whats-new')"
       >
@@ -238,7 +238,7 @@ const openImport = () => {
           @click="showShareMenu = !showShareMenu"
         >
           <div
-            class="w-8 h-8 rounded-lg bg-secondary-800 group-hover:bg-primary-500/20 border border-transparent flex items-center justify-center transition-all"
+            class="w-8 h-8 rounded-lg bg-transparent group-hover:bg-secondary-800 border border-secondary-700 flex items-center justify-center transition-all"
           >
             <svg
               class="w-4 h-4 text-secondary-400 group-hover:text-primary-400"
@@ -289,7 +289,7 @@ const openImport = () => {
 
       <!-- Theme Toggle -->
       <button
-        class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-secondary-800 hover:bg-secondary-700 border border-secondary-700 text-secondary-300 transition-all active:scale-90"
+        class="w-8 h-8 lg:w-9 lg:h-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-secondary-800 border border-secondary-700 text-secondary-400 hover:text-secondary-200 transition-all active:scale-90"
         @click="toggleTheme"
       >
         <svg
@@ -343,9 +343,12 @@ const openImport = () => {
       </button>
 
       <!-- Desktop SQL Tools -->
-      <div v-if="schemaStore.viewMode === 'full'" class="hidden lg:flex items-center gap-2">
+      <div
+        v-if="schemaStore.viewMode === 'full'"
+        class="hidden lg:flex items-center gap-2"
+      >
         <button
-          class="px-4 py-2.5 text-xs font-bold bg-secondary-800/50 hover:bg-secondary-800 border border-secondary-700/50 hover:border-secondary-600 text-secondary-300 rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+          class="px-4 py-2 text-xs font-semibold bg-transparent hover:bg-secondary-800 border border-secondary-700 text-secondary-400 hover:text-secondary-200 rounded-lg active:scale-95 transition-all flex items-center gap-2"
           @click="openImport"
         >
           <svg
@@ -365,7 +368,7 @@ const openImport = () => {
         </button>
 
         <button
-          class="px-6 py-2.5 text-xs font-bold bg-linear-to-br from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600 text-white rounded-xl shadow-lg active:scale-95 transition-all flex items-center gap-2"
+          class="px-5 py-2 text-xs font-semibold bg-primary-500 hover:bg-primary-600 text-white rounded-lg shadow-sm shadow-primary-500/20 active:scale-95 transition-all flex items-center gap-2"
           @click="openExport"
         >
           <svg
@@ -552,10 +555,25 @@ const openImport = () => {
               >
               <button
                 class="w-full flex items-center justify-center gap-3 p-5 bg-secondary-900 border border-secondary-800 rounded-3xl text-secondary-100 text-sm font-bold active:bg-primary-500 transition-all shadow-xl"
-                @click="() => { isMobileMenuOpen = false; openCreateTableModal(true); }"
+                @click="
+                  () => {
+                    isMobileMenuOpen = false;
+                    openCreateTableModal(true);
+                  }
+                "
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 Create Table
               </button>
@@ -594,7 +612,10 @@ const openImport = () => {
 
             <div
               class="p-6 bg-linear-to-br from-primary-500/10 to-primary-800/10 border border-primary-500/20 rounded-3xl flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group"
-              @click="emit('open-whats-new'); isMobileMenuOpen = false"
+              @click="
+                emit('open-whats-new');
+                isMobileMenuOpen = false;
+              "
             >
               <div class="flex flex-col gap-0.5">
                 <span
