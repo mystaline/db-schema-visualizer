@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, nextTick } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
+import { useToast } from "../composables/useToast";
 import ColumnEditor from "./ColumnEditor.vue";
 import ForeignKeyEditor from "./ForeignKeyEditor.vue";
 import IndexEditor from "./IndexEditor.vue";
 import ConstraintEditor from "./ConstraintEditor.vue";
 
 const schemaStore = useSchemaStore();
+const { toast } = useToast();
 const activeTab = ref("columns");
 
 const isRenamingTable = ref(false);
@@ -17,6 +19,7 @@ const IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 const startRename = async () => {
   if (schemaStore.viewMode !== "full" || !schemaStore.selectedTable) return;
+  if (isRenamingTable.value) return;
   renameValue.value = schemaStore.selectedTable.name;
   isRenamingTable.value = true;
   await nextTick();
@@ -25,16 +28,44 @@ const startRename = async () => {
 };
 
 const commitRename = () => {
+  if (!isRenamingTable.value) return;
+
+  if (!schemaStore.selectedTableId) {
+    toast("Could not rename — no table is currently selected.", "error");
+    isRenamingTable.value = false;
+    return;
+  }
+
   let sanitized = renameValue.value.replace(/[^a-zA-Z0-9_]/g, "");
   if (sanitized && /^\d/.test(sanitized)) sanitized = "_" + sanitized;
-  if (
-    sanitized &&
-    IDENTIFIER_RE.test(sanitized) &&
-    schemaStore.selectedTableId
-  ) {
-    schemaStore.updateTable(schemaStore.selectedTableId, { name: sanitized });
+
+  if (!sanitized || !IDENTIFIER_RE.test(sanitized)) {
+    toast("Table name must be a valid identifier (letters, digits, underscores)", "error");
+    isRenamingTable.value = false;
+    return;
   }
-  isRenamingTable.value = false;
+
+  const duplicate = schemaStore.tables.some(
+    (t) => t.name.toLowerCase() === sanitized.toLowerCase() && t.id !== schemaStore.selectedTableId,
+  );
+  if (duplicate) {
+    toast(`Table "${sanitized}" already exists`, "error");
+    isRenamingTable.value = false;
+    return;
+  }
+
+  if (sanitized === schemaStore.selectedTable?.name) {
+    isRenamingTable.value = false;
+    return;
+  }
+
+  try {
+    schemaStore.updateTable(schemaStore.selectedTableId, { name: sanitized });
+    isRenamingTable.value = false;
+  } catch (e) {
+    console.error("[DetailPanel] updateTable threw during rename", e);
+    toast("Failed to rename table. Please try again.", "error");
+  }
 };
 
 const cancelRename = () => {
@@ -51,9 +82,14 @@ const tabs = [
 
 const updateNotes = (e: Event) => {
   if (!schemaStore.selectedTableId) return;
-  schemaStore.updateTable(schemaStore.selectedTableId, {
-    notes: (e.target as HTMLTextAreaElement).value,
-  });
+  try {
+    schemaStore.updateTable(schemaStore.selectedTableId, {
+      notes: (e.target as HTMLTextAreaElement).value,
+    });
+  } catch (err) {
+    console.error("[DetailPanel] updateNotes threw unexpectedly", err);
+    toast("Failed to save notes. Please try again.", "error");
+  }
 };
 </script>
 

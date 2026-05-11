@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onUnmounted } from "vue";
 import { useSchemaStore, type Table } from "../stores/schemaStore";
+import { useToast } from "../composables/useToast";
 
 const IDENTIFIER_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -10,6 +11,7 @@ const props = defineProps<{
 }>();
 
 const schemaStore = useSchemaStore();
+const { toast } = useToast();
 const isDragging = ref(false);
 const dragOffset = ref({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
 const isRenaming = ref(false);
@@ -48,10 +50,17 @@ const handleMouseMove = (e: MouseEvent) => {
   const newY = dragOffset.value.initialY + deltaY;
 
   schemaStore.activeDrag = { id: props.table.id, x: newX, y: newY };
-  schemaStore.updateTable(props.table.id, { x: newX, y: newY });
 };
 
 const handleMouseUp = () => {
+  if (isDragging.value && schemaStore.activeDrag) {
+    try {
+      schemaStore.updateTable(props.table.id, { x: schemaStore.activeDrag.x, y: schemaStore.activeDrag.y });
+    } catch (e) {
+      console.error("[TableNode] Failed to persist drag position", e);
+      toast("Could not save table position.", "error");
+    }
+  }
   isDragging.value = false;
   schemaStore.activeDrag = null;
   window.removeEventListener("mousemove", handleMouseMove);
@@ -118,10 +127,17 @@ const handleTouchMove = (e: TouchEvent) => {
   const newY = dragOffset.value.initialY + deltaY;
 
   schemaStore.activeDrag = { id: props.table.id, x: newX, y: newY };
-  schemaStore.updateTable(props.table.id, { x: newX, y: newY });
 };
 
 const handleTouchUp = () => {
+  if (isDragging.value && schemaStore.activeDrag) {
+    try {
+      schemaStore.updateTable(props.table.id, { x: schemaStore.activeDrag.x, y: schemaStore.activeDrag.y });
+    } catch (e) {
+      console.error("[TableNode] Failed to persist drag position (touch)", e);
+      toast("Could not save table position.", "error");
+    }
+  }
   isDragging.value = false;
   schemaStore.activeDrag = null;
   window.removeEventListener("touchmove", handleTouchMove);
@@ -145,12 +161,32 @@ const startRename = async () => {
 };
 
 const commitRename = () => {
+  if (!isRenaming.value) return;
   let sanitized = renameValue.value.replace(/[^a-zA-Z0-9_]/g, "");
   if (sanitized && /^\d/.test(sanitized)) sanitized = "_" + sanitized;
-  if (sanitized && IDENTIFIER_RE.test(sanitized)) {
-    schemaStore.updateTable(props.table.id, { name: sanitized });
+
+  if (!sanitized || !IDENTIFIER_RE.test(sanitized)) {
+    toast("Table name must be a valid identifier (letters, digits, underscores)", "error");
+    isRenaming.value = false;
+    return;
   }
-  isRenaming.value = false;
+
+  const duplicate = schemaStore.tables.some(
+    (t) => t.name.toLowerCase() === sanitized.toLowerCase() && t.id !== props.table.id,
+  );
+  if (duplicate) {
+    toast(`Table "${sanitized}" already exists`, "error");
+    isRenaming.value = false;
+    return;
+  }
+
+  try {
+    schemaStore.updateTable(props.table.id, { name: sanitized });
+    isRenaming.value = false;
+  } catch (e) {
+    console.error("[TableNode] updateTable threw during rename", e);
+    toast("Failed to rename table. Please try again.", "error");
+  }
 };
 
 const cancelRename = () => {

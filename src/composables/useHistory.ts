@@ -1,4 +1,4 @@
-import { ref, computed, watch, toRaw } from "vue";
+import { ref, computed, watch, toRaw, nextTick } from "vue";
 import {
   useSchemaStore,
   type Table,
@@ -16,6 +16,7 @@ const DEBOUNCE_MS = 300;
 const undoStack = ref<Snapshot[]>([]);
 const redoStack = ref<Snapshot[]>([]);
 let isRestoring = false;
+export const isHistoryRestoring = ref(false);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSnapshot: string | null = null;
 
@@ -66,18 +67,27 @@ export function useHistory() {
         lastSnapshot = currentKey;
       }, DEBOUNCE_MS);
     },
-    { deep: true },
+    { deep: true, flush: "sync" },
   );
 
   function restore(snapshot: Snapshot) {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
     isRestoring = true;
-    store.tables = JSON.parse(JSON.stringify(snapshot.tables));
-    store.foreignKeys = JSON.parse(JSON.stringify(snapshot.foreignKeys));
+    isHistoryRestoring.value = true;
+    store.restoreSnapshot(
+      JSON.parse(JSON.stringify(snapshot.tables)),
+      JSON.parse(JSON.stringify(snapshot.foreignKeys)),
+      store.canvasTransform,
+      store.selectedTableId,
+    );
     lastSnapshot = snapshotKey(snapshot);
-    // Use setTimeout to ensure the watcher fires and sees isRestoring=true
-    setTimeout(() => {
-      isRestoring = false;
-    }, 0);
+    isRestoring = false;
+    nextTick(() => {
+      isHistoryRestoring.value = false;
+    });
   }
 
   function undo() {

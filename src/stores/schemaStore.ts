@@ -2,6 +2,7 @@ import { ref, computed, watch } from "vue";
 import { defineStore } from "pinia";
 import { parseDDL } from "../utils/ddlParser";
 import { uuid } from "../utils/uuid";
+import { useToast } from "../composables/useToast";
 
 export interface Column {
   id: string;
@@ -58,6 +59,8 @@ export interface ForeignKey {
 }
 
 export type ViewMode = "full" | "read";
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const getUniqueName = (base: string, others: string[]) => {
   let name = base;
@@ -161,7 +164,16 @@ export const useSchemaStore = defineStore("schema", () => {
         const newName = updates.name;
 
         // SIDE EFFECT: Re-refactor expressions and REBUILD index names
-        const wordRegex = new RegExp(`\\b${oldName}\\b`, "gi");
+        const wordRegex = new RegExp(`\\b${escapeRegex(oldName)}\\b`, "gi");
+
+        // Build a virtual table with the new column name so getIndexName sees
+        // updated names without triggering extra reactive notifications.
+        const virtualTable = {
+          ...table,
+          columns: table.columns.map((c, i) =>
+            i === columnIndex ? { ...c, name: newName } : c,
+          ),
+        };
 
         table.indexes.forEach((idx) => {
           // 1. Update expression values first
@@ -171,12 +183,8 @@ export const useSchemaStore = defineStore("schema", () => {
             }
           });
 
-          // 2. Then rebuild name based on NEW values
-          // We temp update the column name in the array so getIndexName sees it
-          const originalName = table.columns[columnIndex].name;
-          table.columns[columnIndex].name = newName;
-          idx.name = getIndexName(table, idx);
-          table.columns[columnIndex].name = originalName;
+          // 2. Rebuild name using the virtual table (no reactive mutation)
+          idx.name = getIndexName(virtualTable, idx);
         });
 
         table.checkConstraints.forEach((chk) => {
@@ -230,7 +238,7 @@ export const useSchemaStore = defineStore("schema", () => {
       const usesColumn = idx.parts.some((part) => {
         if (part.type === "column") return part.value === columnId;
         if (part.type === "expression" && columnName) {
-          const regex = new RegExp(`\\b${columnName}\\b`, "i");
+          const regex = new RegExp(`\\b${escapeRegex(columnName)}\\b`, "i");
           return regex.test(part.value);
         }
         return false;
@@ -240,7 +248,7 @@ export const useSchemaStore = defineStore("schema", () => {
 
     table.checkConstraints = table.checkConstraints.filter((chk) => {
       if (!columnName) return true;
-      const regex = new RegExp(`\\b${columnName}\\b`, "i");
+      const regex = new RegExp(`\\b${escapeRegex(columnName)}\\b`, "i");
       return !regex.test(chk.expression);
     });
   };
@@ -255,16 +263,15 @@ export const useSchemaStore = defineStore("schema", () => {
         updates.name = getUniqueName(updates.name, otherNames);
         const newTableName = updates.name;
 
-        // SIDE EFFECT: Rebuild all index names because table name changed
-        const originalTableName = table.name;
-        table.name = newTableName;
+        // SIDE EFFECT: Rebuild all index/constraint names using a virtual table
+        // to avoid triggering extra reactive notifications before the real update.
+        const virtualTable = { ...table, name: newTableName };
         table.indexes.forEach((idx) => {
-          idx.name = getIndexName(table, idx);
+          idx.name = getIndexName(virtualTable, idx);
         });
         table.checkConstraints.forEach((chk) => {
-          chk.name = getConstraintName(table, chk.expression);
+          chk.name = getConstraintName(virtualTable, chk.expression);
         });
-        table.name = originalTableName;
       }
       Object.assign(table, updates);
     }
@@ -330,91 +337,137 @@ export const useSchemaStore = defineStore("schema", () => {
   };
 
   // --- LOCALSTORAGE ---
+  const { toast } = useToast();
+
+  let isHydrating = false;
+
   const saveToLocalStorage = () => {
-    const data = {
-      t: tables.value,
-      f: foreignKeys.value,
-      v: canvasTransform.value,
-      s: selectedTableId.value,
-    };
-    localStorage.setItem("db_schema_visualizer", JSON.stringify(data));
+    if (viewMode.value === "read") return;
+    if (isHydrating) return;
+    try {
+      const data = {
+        t: tables.value,
+        f: foreignKeys.value,
+        v: canvasTransform.value,
+        s: selectedTableId.value,
+      };
+      localStorage.setItem("db_schema_visualizer", JSON.stringify(data));
+    } catch (e) {
+      console.error("[schemaStore] Failed to save to localStorage", e);
+      toast(
+        "Auto-save failed — your changes may not persist. Try exporting your schema.",
+        "error",
+      );
+    }
   };
 
-  const loadFromLocalStorage = () => {
+  const loadFromLocalStorage = (): "loaded" | "empty" | "error" => {
     try {
       const raw = localStorage.getItem("db_schema_visualizer");
-      if (!raw) return false;
+      if (!raw) return "empty";
       const parsed = JSON.parse(raw);
-      if (parsed.t) {
-        tables.value = parsed.t.map((table: Table) => ({
-          ...table,
-          indexes: (table.indexes || []).map((idx: TableIndex) => {
-            if (idx.columnIds && !idx.parts) {
-              return {
-                ...idx,
-                parts: [
-                  ...idx.columnIds.map((id: string) => ({
-                    type: "column",
-                    value: id,
-                    order: "ASC",
-                  })),
-                  ...(idx.expressions || []).map((expr: string) => ({
-                    type: "expression",
-                    value: expr,
-                    order: "ASC",
-                  })),
-                ],
-              };
-            }
-            return idx;
-          }),
-        }));
+      isHydrating = true;
+      try {
+        if (parsed.t) {
+          tables.value = parsed.t.map((table: Table) => ({
+            ...table,
+            checkConstraints: table.checkConstraints || [],
+            indexes: (table.indexes || []).map((idx: TableIndex) => {
+              if (idx.columnIds && !idx.parts) {
+                return {
+                  ...idx,
+                  parts: [
+                    ...idx.columnIds.map((id: string) => ({
+                      type: "column",
+                      value: id,
+                      order: "ASC",
+                    })),
+                    ...(idx.expressions || []).map((expr: string) => ({
+                      type: "expression",
+                      value: expr,
+                      order: "ASC",
+                    })),
+                  ],
+                };
+              }
+              return idx;
+            }),
+          }));
+        }
+        if (parsed.f) foreignKeys.value = parsed.f;
+        if (parsed.v) {
+          canvasTransform.value = {
+            x: parsed.v.x ?? 0,
+            y: parsed.v.y ?? 0,
+            k: parsed.v.k ?? parsed.v.scale ?? 1,
+          };
+        }
+        if (parsed.s && tables.value.some((t: Table) => t.id === parsed.s)) {
+          selectedTableId.value = parsed.s;
+        }
+      } finally {
+        isHydrating = false;
       }
-      if (parsed.f) foreignKeys.value = parsed.f;
-      if (parsed.v) {
-        canvasTransform.value = {
-          x: parsed.v.x ?? 0,
-          y: parsed.v.y ?? 0,
-          k: parsed.v.k ?? parsed.v.scale ?? 1,
-        };
+      return "loaded";
+    } catch (e) {
+      console.error("[schemaStore] Failed to load from localStorage", e);
+      let cleared = false;
+      try {
+        localStorage.removeItem("db_schema_visualizer");
+        cleared = true;
+      } catch (removeErr) {
+        console.error(
+          "[schemaStore] Failed to clear corrupted localStorage entry",
+          removeErr,
+        );
       }
-      if (parsed.s) selectedTableId.value = parsed.s;
-      return true;
-    } catch {
-      return false;
+      toast(
+        cleared
+          ? "Could not restore your saved session — corrupted data was cleared. Starting fresh."
+          : "Could not restore your saved session — please clear your browser's local storage manually.",
+        "error",
+      );
+      return "error";
     }
   };
 
   watch(
     [tables, foreignKeys, canvasTransform, selectedTableId, viewMode],
     saveToLocalStorage,
-    { deep: true },
+    { deep: true, flush: "sync" },
   );
 
   // URL Sharing Logic (URL-Safe Base64)
   const getShareableData = async (permission: ViewMode = "full") => {
-    const data = JSON.stringify({
-      t: tables.value,
-      f: foreignKeys.value,
-      v: canvasTransform.value,
-      s: selectedTableId.value,
-      p: permission,
-    });
+    try {
+      const data = JSON.stringify({
+        t: tables.value,
+        f: foreignKeys.value,
+        v: canvasTransform.value,
+        s: selectedTableId.value,
+        p: permission,
+      });
 
-    const stream = new Blob([data])
-      .stream()
-      .pipeThrough(new CompressionStream("gzip"));
-    const compressedBuf = await new Response(stream).arrayBuffer();
-    const bytes = new Uint8Array(compressedBuf);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++)
-      binary += String.fromCharCode(bytes[i]);
+      const stream = new Blob([data])
+        .stream()
+        .pipeThrough(new CompressionStream("gzip"));
+      const compressedBuf = await new Response(stream).arrayBuffer();
+      const bytes = new Uint8Array(compressedBuf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++)
+        binary += String.fromCharCode(bytes[i]);
 
-    // URL-safe Base64: replace + with -, / with _, and strip padding
-    return btoa(binary)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+      // URL-safe Base64: replace + with -, / with _, and strip padding
+      return btoa(binary)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+    } catch (e) {
+      console.error("[schemaStore] Failed to generate shareable data", e);
+      throw new Error(
+        "Failed to generate share link. Try exporting as SQL or JSON instead.",
+      );
+    }
   };
 
   const loadFromShareableData = async (base64: string) => {
@@ -432,47 +485,81 @@ export const useSchemaStore = defineStore("schema", () => {
       const decompressedData = await new Response(stream).text();
       const parsed = JSON.parse(decompressedData);
 
-      viewMode.value = parsed.p === "read" ? "read" : "full";
-      if (parsed.t) {
-        tables.value = parsed.t.map((table: Table) => ({
-          ...table,
-          indexes: (table.indexes || []).map((idx: TableIndex) => {
-            if (idx.columnIds && !idx.parts) {
-              return {
-                ...idx,
-                parts: [
-                  ...idx.columnIds.map((id: string) => ({
-                    type: "column",
-                    value: id,
-                    order: "ASC",
-                  })),
-                  ...(idx.expressions || []).map((expr: string) => ({
-                    type: "expression",
-                    value: expr,
-                    order: "ASC",
-                  })),
-                ],
-              };
-            }
-            return idx;
-          }),
-        }));
+      // Collect all derived values BEFORE touching any reactive state so a
+      // mid-mapping error cannot leave the store half-updated (e.g. viewMode
+      // set to "read" while tables still holds the user's own schema).
+      const newViewMode: ViewMode = parsed.p === "read" ? "read" : "full";
+      const newTables = parsed.t
+        ? (parsed.t as Table[]).map((table: Table) => ({
+            ...table,
+            checkConstraints: table.checkConstraints || [],
+            indexes: (table.indexes || []).map((idx: TableIndex) => {
+              if (idx.columnIds && !idx.parts) {
+                return {
+                  ...idx,
+                  parts: [
+                    ...idx.columnIds.map((id: string) => ({
+                      type: "column" as const,
+                      value: id,
+                      order: "ASC" as const,
+                    })),
+                    ...(idx.expressions || []).map((expr: string) => ({
+                      type: "expression" as const,
+                      value: expr,
+                      order: "ASC" as const,
+                    })),
+                  ],
+                };
+              }
+              return idx;
+            }),
+          }))
+        : null;
+      const newFKs: ForeignKey[] | null = Array.isArray(parsed.f)
+        ? parsed.f
+        : null;
+      const newTransform = parsed.v
+        ? {
+            x: parsed.v.x ?? 0,
+            y: parsed.v.y ?? 0,
+            k: parsed.v.k ?? parsed.v.scale ?? 1,
+          }
+        : null;
+
+      // Apply atomically — all parsing succeeded. isHydrating prevents saveToLocalStorage
+      // from overwriting the user's own schema just because they opened a share link.
+      isHydrating = true;
+      try {
+        viewMode.value = newViewMode;
+        if (newTables !== null) tables.value = newTables;
+        if (newFKs !== null) foreignKeys.value = newFKs;
+        if (newTransform !== null) canvasTransform.value = newTransform;
+        if (parsed.s && tables.value.some((t: Table) => t.id === parsed.s)) {
+          selectedTableId.value = parsed.s;
+        }
+      } finally {
+        isHydrating = false;
       }
-      if (parsed.f) foreignKeys.value = parsed.f;
-      if (parsed.v) {
-        canvasTransform.value = {
-          x: parsed.v.x ?? 0,
-          y: parsed.v.y ?? 0,
-          k: parsed.v.k ?? parsed.v.scale ?? 1,
-        };
-      }
-      if (parsed.s) selectedTableId.value = parsed.s;
+      return true;
     } catch (e) {
-      console.error("Failed to hydrate from URL data", e);
+      console.error("[schemaStore] Failed to hydrate from URL data", e);
+      isHydrating = true;
+      try {
+        viewMode.value = "full";
+        tables.value = [];
+        foreignKeys.value = [];
+        canvasTransform.value = { x: 0, y: 0, k: 1 };
+        selectedTableId.value = null;
+      } finally {
+        isHydrating = false;
+      }
+      return false;
     }
   };
 
   const loadPreset = (type: "blog" | "ecommerce") => {
+    isHydrating = true;
+    try {
     tables.value = [];
     foreignKeys.value = [];
 
@@ -484,54 +571,331 @@ export const useSchemaStore = defineStore("schema", () => {
       const userPkId = uuid();
       const postPkId = uuid();
       const tagPkId = uuid();
+      const profileEmailColId = uuid();
+      const articleSlugColId = uuid();
 
-      tables.value.push({ id: userId, name: "profiles", x: 50, y: 50, columns: [
-        { id: userPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: uuid(), name: "username", type: "varchar(50)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "display_name", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "email", type: "varchar(255)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "meta", type: "jsonb", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: "'{}'::jsonb" },
-      ], indexes: [{ id: uuid(), name: "idx_profiles_email", type: "unique", parts: [{ type: "column", value: "email", order: "ASC" }], filter: "" }], checkConstraints: [] });
+      tables.value.push({
+        id: userId,
+        name: "profiles",
+        x: 50,
+        y: 50,
+        columns: [
+          {
+            id: userPkId,
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: uuid(),
+            name: "username",
+            type: "varchar(50)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "display_name",
+            type: "text",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: profileEmailColId,
+            name: "email",
+            type: "varchar(255)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "meta",
+            type: "jsonb",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: "'{}'::jsonb",
+          },
+        ],
+        indexes: [
+          {
+            id: uuid(),
+            name: "unq_profiles_email",
+            type: "unique",
+            parts: [{ type: "column", value: profileEmailColId, order: "ASC" }],
+            filter: "",
+          },
+        ],
+        checkConstraints: [],
+      });
 
-      tables.value.push({ id: postId, name: "articles", x: 450, y: 50, columns: [
-        { id: postPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: uuid(), name: "author_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "slug", type: "varchar(200)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "title", type: "text", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "body", type: "text", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "view_count", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "0" },
-        { id: uuid(), name: "published_at", type: "timestamptz", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-      ], indexes: [{ id: uuid(), name: "idx_articles_slug", type: "unique", parts: [{ type: "column", value: "slug", order: "ASC" }], filter: "" }], checkConstraints: [{ id: uuid(), name: "chk_view_count_pos", expression: "view_count >= 0" }] });
+      tables.value.push({
+        id: postId,
+        name: "articles",
+        x: 450,
+        y: 50,
+        columns: [
+          {
+            id: postPkId,
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: uuid(),
+            name: "author_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: articleSlugColId,
+            name: "slug",
+            type: "varchar(200)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "title",
+            type: "text",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "body",
+            type: "text",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "view_count",
+            type: "int",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "0",
+          },
+          {
+            id: uuid(),
+            name: "published_at",
+            type: "timestamptz",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+        ],
+        indexes: [
+          {
+            id: uuid(),
+            name: "unq_articles_slug",
+            type: "unique",
+            parts: [{ type: "column", value: articleSlugColId, order: "ASC" }],
+            filter: "",
+          },
+        ],
+        checkConstraints: [
+          {
+            id: uuid(),
+            name: "chk_view_count_pos",
+            expression: "view_count >= 0",
+          },
+        ],
+      });
 
-      tables.value.push({ id: tagId, name: "tags", x: 450, y: 500, columns: [
-        { id: tagPkId, name: "id", type: "int", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "name", type: "varchar(50)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-      ], indexes: [], checkConstraints: [] });
+      tables.value.push({
+        id: tagId,
+        name: "tags",
+        x: 450,
+        y: 500,
+        columns: [
+          {
+            id: tagPkId,
+            name: "id",
+            type: "int",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "name",
+            type: "varchar(50)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+        ],
+        indexes: [],
+        checkConstraints: [],
+      });
 
       const bridgeId = uuid();
-      tables.value.push({ id: bridgeId, name: "article_tags", x: 800, y: 350, columns: [
-        { id: uuid(), name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: uuid(), name: "article_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "tag_id", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-      ], indexes: [], checkConstraints: [] });
+      tables.value.push({
+        id: bridgeId,
+        name: "article_tags",
+        x: 800,
+        y: 350,
+        columns: [
+          {
+            id: uuid(),
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: uuid(),
+            name: "article_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "tag_id",
+            type: "int",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+        ],
+        indexes: [],
+        checkConstraints: [],
+      });
 
       const commentAuthorId = uuid();
       const commentPostId = uuid();
-      tables.value.push({ id: commentId, name: "comments", x: 800, y: 50, columns: [
-        { id: uuid(), name: "id", type: "bigint", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null },
-        { id: commentAuthorId, name: "user_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: commentPostId, name: "article_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "content", type: "text", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "is_flagged", type: "boolean", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "false" },
-      ], indexes: [], checkConstraints: [] });
+      tables.value.push({
+        id: commentId,
+        name: "comments",
+        x: 800,
+        y: 50,
+        columns: [
+          {
+            id: uuid(),
+            name: "id",
+            type: "bigint",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: commentAuthorId,
+            name: "user_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: commentPostId,
+            name: "article_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "content",
+            type: "text",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "is_flagged",
+            type: "boolean",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "false",
+          },
+        ],
+        indexes: [],
+        checkConstraints: [],
+      });
 
-      const authorCol = tables.value.find((t) => t.id === postId)!.columns.find((c) => c.name === "author_id")!;
-      addForeignKey({ sourceTableId: postId, sourceColumnId: authorCol.id, targetTableId: userId, targetColumnId: userPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
-      addForeignKey({ sourceTableId: commentId, sourceColumnId: commentAuthorId, targetTableId: userId, targetColumnId: userPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
-      addForeignKey({ sourceTableId: commentId, sourceColumnId: commentPostId, targetTableId: postId, targetColumnId: postPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      const authorCol = tables.value
+        .find((t) => t.id === postId)!
+        .columns.find((c) => c.name === "author_id")!;
+      addForeignKey({
+        sourceTableId: postId,
+        sourceColumnId: authorCol.id,
+        targetTableId: userId,
+        targetColumnId: userPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
+      addForeignKey({
+        sourceTableId: commentId,
+        sourceColumnId: commentAuthorId,
+        targetTableId: userId,
+        targetColumnId: userPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
+      addForeignKey({
+        sourceTableId: commentId,
+        sourceColumnId: commentPostId,
+        targetTableId: postId,
+        targetColumnId: postPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
       const bridgeCols = tables.value.find((t) => t.id === bridgeId)!.columns;
-      addForeignKey({ sourceTableId: bridgeId, sourceColumnId: bridgeCols[1].id, targetTableId: postId, targetColumnId: postPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
-      addForeignKey({ sourceTableId: bridgeId, sourceColumnId: bridgeCols[2].id, targetTableId: tagId, targetColumnId: tagPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({
+        sourceTableId: bridgeId,
+        sourceColumnId: bridgeCols[1].id,
+        targetTableId: postId,
+        targetColumnId: postPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
+      addForeignKey({
+        sourceTableId: bridgeId,
+        sourceColumnId: bridgeCols[2].id,
+        targetTableId: tagId,
+        targetColumnId: tagPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
     }
 
     if (type === "ecommerce") {
@@ -545,62 +909,352 @@ export const useSchemaStore = defineStore("schema", () => {
       const categoryId = uuid();
       const categoryPkId = uuid();
 
-      tables.value.push({ id: customerId, name: "customers", x: 50, y: 50, columns: [
-        { id: customerPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: uuid(), name: "email", type: "varchar(255)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "first_name", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "last_name", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "marketing_opt_in", type: "boolean", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "true" },
-      ], indexes: [], checkConstraints: [] });
+      tables.value.push({
+        id: customerId,
+        name: "customers",
+        x: 50,
+        y: 50,
+        columns: [
+          {
+            id: customerPkId,
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: uuid(),
+            name: "email",
+            type: "varchar(255)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "first_name",
+            type: "text",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "last_name",
+            type: "text",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "marketing_opt_in",
+            type: "boolean",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "true",
+          },
+        ],
+        indexes: [],
+        checkConstraints: [],
+      });
 
-      tables.value.push({ id: categoryId, name: "categories", x: 50, y: 500, columns: [
-        { id: categoryPkId, name: "id", type: "int", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "name", type: "varchar(100)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "parent_id", type: "int", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-      ], indexes: [], checkConstraints: [] });
+      tables.value.push({
+        id: categoryId,
+        name: "categories",
+        x: 50,
+        y: 500,
+        columns: [
+          {
+            id: categoryPkId,
+            name: "id",
+            type: "int",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "name",
+            type: "varchar(100)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "parent_id",
+            type: "int",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+        ],
+        indexes: [],
+        checkConstraints: [],
+      });
 
       const productCategoryId = uuid();
-      tables.value.push({ id: productId, name: "products", x: 450, y: 450, columns: [
-        { id: productPkId, name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: productCategoryId, name: "category_id", type: "int", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "sku", type: "varchar(20)", isPrimaryKey: false, isNullable: false, isUnique: true, defaultValue: null },
-        { id: uuid(), name: "price", type: "numeric(12,2)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "0.00" },
-        { id: uuid(), name: "specs", type: "jsonb", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
-      ], indexes: [], checkConstraints: [{ id: uuid(), name: "chk_price_positive", expression: "price > 0" }] });
+      tables.value.push({
+        id: productId,
+        name: "products",
+        x: 450,
+        y: 450,
+        columns: [
+          {
+            id: productPkId,
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: productCategoryId,
+            name: "category_id",
+            type: "int",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "sku",
+            type: "varchar(20)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "price",
+            type: "numeric(12,2)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "0.00",
+          },
+          {
+            id: uuid(),
+            name: "specs",
+            type: "jsonb",
+            isPrimaryKey: false,
+            isNullable: true,
+            isUnique: false,
+            defaultValue: null,
+          },
+        ],
+        indexes: [],
+        checkConstraints: [
+          { id: uuid(), name: "chk_price_positive", expression: "price > 0" },
+        ],
+      });
 
-      tables.value.push({ id: orderId, name: "orders", x: 450, y: 50, columns: [
-        { id: uuid(), name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: orderCustomerId, name: "customer_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "order_date", type: "timestamptz", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "now()" },
-        { id: uuid(), name: "total_amount", type: "numeric(12,2)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "0" },
-      ], indexes: [], checkConstraints: [] });
+      tables.value.push({
+        id: orderId,
+        name: "orders",
+        x: 450,
+        y: 50,
+        columns: [
+          {
+            id: uuid(),
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: orderCustomerId,
+            name: "customer_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "order_date",
+            type: "timestamptz",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "now()",
+          },
+          {
+            id: uuid(),
+            name: "total_amount",
+            type: "numeric(12,2)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "0",
+          },
+        ],
+        indexes: [],
+        checkConstraints: [],
+      });
 
       const itemOrderId = uuid();
       const itemProductId = uuid();
-      tables.value.push({ id: itemId, name: "order_line_items", x: 850, y: 250, columns: [
-        { id: uuid(), name: "id", type: "uuid", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: "gen_random_uuid()" },
-        { id: itemOrderId, name: "order_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: itemProductId, name: "product_id", type: "uuid", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-        { id: uuid(), name: "quantity", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "1" },
-        { id: uuid(), name: "unit_price", type: "numeric(12,2)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
-      ], indexes: [], checkConstraints: [{ id: uuid(), name: "chk_qty_pos", expression: "quantity > 0" }] });
+      tables.value.push({
+        id: itemId,
+        name: "order_line_items",
+        x: 850,
+        y: 250,
+        columns: [
+          {
+            id: uuid(),
+            name: "id",
+            type: "uuid",
+            isPrimaryKey: true,
+            isNullable: false,
+            isUnique: true,
+            defaultValue: "gen_random_uuid()",
+          },
+          {
+            id: itemOrderId,
+            name: "order_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: itemProductId,
+            name: "product_id",
+            type: "uuid",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+          {
+            id: uuid(),
+            name: "quantity",
+            type: "int",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: "1",
+          },
+          {
+            id: uuid(),
+            name: "unit_price",
+            type: "numeric(12,2)",
+            isPrimaryKey: false,
+            isNullable: false,
+            isUnique: false,
+            defaultValue: null,
+          },
+        ],
+        indexes: [],
+        checkConstraints: [
+          { id: uuid(), name: "chk_qty_pos", expression: "quantity > 0" },
+        ],
+      });
 
-      addForeignKey({ sourceTableId: orderId, sourceColumnId: orderCustomerId, targetTableId: customerId, targetColumnId: customerPkId, onDelete: "RESTRICT", onUpdate: "CASCADE" });
+      addForeignKey({
+        sourceTableId: orderId,
+        sourceColumnId: orderCustomerId,
+        targetTableId: customerId,
+        targetColumnId: customerPkId,
+        onDelete: "RESTRICT",
+        onUpdate: "CASCADE",
+      });
       const lineItemCols = tables.value.find((t) => t.id === itemId)!.columns;
-      addForeignKey({ sourceTableId: itemId, sourceColumnId: lineItemCols[1].id, targetTableId: orderId, targetColumnId: tables.value.find((t) => t.id === orderId)!.columns[0].id, onDelete: "CASCADE", onUpdate: "CASCADE" });
-      addForeignKey({ sourceTableId: itemId, sourceColumnId: lineItemCols[2].id, targetTableId: productId, targetColumnId: productPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
-      addForeignKey({ sourceTableId: productId, sourceColumnId: productCategoryId, targetTableId: categoryId, targetColumnId: categoryPkId, onDelete: "SET NULL", onUpdate: "CASCADE" });
-      addForeignKey({ sourceTableId: categoryId, sourceColumnId: tables.value.find((t) => t.id === categoryId)!.columns[2].id, targetTableId: categoryId, targetColumnId: categoryPkId, onDelete: "CASCADE", onUpdate: "CASCADE" });
+      addForeignKey({
+        sourceTableId: itemId,
+        sourceColumnId: lineItemCols[1].id,
+        targetTableId: orderId,
+        targetColumnId: tables.value.find((t) => t.id === orderId)!.columns[0]
+          .id,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
+      addForeignKey({
+        sourceTableId: itemId,
+        sourceColumnId: lineItemCols[2].id,
+        targetTableId: productId,
+        targetColumnId: productPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
+      addForeignKey({
+        sourceTableId: productId,
+        sourceColumnId: productCategoryId,
+        targetTableId: categoryId,
+        targetColumnId: categoryPkId,
+        onDelete: "SET NULL",
+        onUpdate: "CASCADE",
+      });
+      addForeignKey({
+        sourceTableId: categoryId,
+        sourceColumnId: tables.value.find((t) => t.id === categoryId)!
+          .columns[2].id,
+        targetTableId: categoryId,
+        targetColumnId: categoryPkId,
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
 
       const orders = tables.value.find((t) => t.name === "orders");
       if (orders) {
         const custIdCol = orders.columns.find((c) => c.name === "customer_id");
         const dateCol = orders.columns.find((c) => c.name === "order_date");
         if (custIdCol && dateCol) {
-          orders.indexes.push({ id: uuid(), name: "idx_orders_customer_date", type: "normal", parts: [{ type: "column", value: custIdCol.id, order: "ASC" }, { type: "column", value: dateCol.id, order: "DESC" }], filter: "" });
+          orders.indexes.push({
+            id: uuid(),
+            name: "idx_orders_customer_date",
+            type: "normal",
+            parts: [
+              { type: "column", value: custIdCol.id, order: "ASC" },
+              { type: "column", value: dateCol.id, order: "DESC" },
+            ],
+            filter: "",
+          });
         }
       }
     }
+    selectedTableId.value = null;
+    canvasTransform.value = { x: 0, y: 0, k: 1 };
+    } finally {
+      isHydrating = false;
+    }
+    saveToLocalStorage();
+  };
+
+  const restoreSnapshot = (
+    t: Table[],
+    fks: ForeignKey[],
+    transform: typeof canvasTransform.value,
+    selected: string | null,
+  ) => {
+    isHydrating = true;
+    try {
+      tables.value.splice(0, tables.value.length, ...t);
+      foreignKeys.value.splice(0, foreignKeys.value.length, ...fks);
+      canvasTransform.value = transform;
+      selectedTableId.value = selected;
+    } finally {
+      isHydrating = false;
+    }
+    saveToLocalStorage();
   };
 
   return {
@@ -611,6 +1265,7 @@ export const useSchemaStore = defineStore("schema", () => {
     canvasTransform,
     viewMode,
     selectedTable,
+    restoreSnapshot,
     addTable,
     addColumn,
     updateColumn,
@@ -630,10 +1285,24 @@ export const useSchemaStore = defineStore("schema", () => {
     loadFromShareableData,
     loadFromLocalStorage,
     importFromSql: async (ddl: string) => {
-      const { tables: newTables, foreignKeys: newFKs } = parseDDL(ddl);
+      let parsed: ReturnType<typeof parseDDL>;
+      try {
+        parsed = parseDDL(ddl);
+      } catch (e) {
+        throw new Error(
+          `SQL parse error: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+      const { tables: newTables, foreignKeys: newFKs } = parsed;
+
+      if (newTables.length === 0) {
+        throw new Error(
+          "No CREATE TABLE statements found in the provided SQL.",
+        );
+      }
 
       // Simple grid layout
-      const COLS = Math.ceil(Math.sqrt(newTables.length || 1));
+      const COLS = Math.ceil(Math.sqrt(newTables.length));
       const X_GAP = 300;
       const Y_GAP = 400;
 
@@ -642,47 +1311,96 @@ export const useSchemaStore = defineStore("schema", () => {
         table.y = Math.floor(i / COLS) * Y_GAP + 100;
       });
 
-      tables.value = newTables;
-      foreignKeys.value = newFKs;
-      selectedTableId.value = null;
-      canvasTransform.value = { x: 0, y: 0, k: 1 };
+      isHydrating = true;
+      try {
+        tables.value = newTables;
+        foreignKeys.value = newFKs;
+        selectedTableId.value = null;
+        canvasTransform.value = { x: 0, y: 0, k: 1 };
+      } finally {
+        isHydrating = false;
+      }
+      saveToLocalStorage();
     },
 
     importFromJson: async (jsonStr: string) => {
-      const parsed = JSON.parse(jsonStr);
+      let parsed: { tables?: unknown; foreignKeys?: unknown };
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch (e) {
+        throw new Error(
+          `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
 
       if (!Array.isArray(parsed.tables)) {
         throw new Error('Invalid JSON schema: missing "tables" array');
       }
+      if ((parsed.tables as unknown[]).length === 0) {
+        throw new Error(
+          "No tables found in the JSON schema — the file appears to be empty.",
+        );
+      }
 
-      const newTables: Table[] = (parsed.tables as Table[]).map((table) => ({
-        ...table,
-        indexes: (table.indexes || []).map((idx: TableIndex) => {
-          if (idx.columnIds && !idx.parts) {
-            return {
-              ...idx,
-              parts: [
-                ...idx.columnIds.map((id: string) => ({
-                  type: "column" as const,
-                  value: id,
-                  order: "ASC" as const,
-                })),
-              ],
-            };
+      const newTables: Table[] = (parsed.tables as unknown[]).map(
+        (table: unknown, i) => {
+          const t = table as Record<string, unknown>;
+          if (
+            typeof t?.id !== "string" ||
+            typeof t?.name !== "string" ||
+            !Array.isArray(t?.columns)
+          ) {
+            throw new Error(
+              `Table at index ${i} is missing required fields (id, name, columns)`,
+            );
           }
-          return idx;
-        }),
-        checkConstraints: table.checkConstraints || [],
-      }));
+          const typedTable = t as unknown as Table;
+          return {
+            ...typedTable,
+            indexes: (typedTable.indexes || []).map((idx: TableIndex) => {
+              if (idx.columnIds && !idx.parts) {
+                return {
+                  ...idx,
+                  parts: [
+                    ...idx.columnIds.map((id: string) => ({
+                      type: "column" as const,
+                      value: id,
+                      order: "ASC" as const,
+                    })),
+                    ...(idx.expressions || []).map((expr: string) => ({
+                      type: "expression" as const,
+                      value: expr,
+                      order: "ASC" as const,
+                    })),
+                  ],
+                };
+              }
+              return idx;
+            }),
+            checkConstraints: typedTable.checkConstraints || [],
+          };
+        },
+      );
 
+      if (parsed.foreignKeys != null && !Array.isArray(parsed.foreignKeys)) {
+        throw new Error(
+          '"foreignKeys" must be an array. Fix the JSON and try again.',
+        );
+      }
       const newFKs: ForeignKey[] = Array.isArray(parsed.foreignKeys)
         ? parsed.foreignKeys
         : [];
 
-      tables.value = newTables;
-      foreignKeys.value = newFKs;
-      selectedTableId.value = null;
-      canvasTransform.value = { x: 0, y: 0, k: 1 };
+      isHydrating = true;
+      try {
+        tables.value = newTables;
+        foreignKeys.value = newFKs;
+        selectedTableId.value = null;
+        canvasTransform.value = { x: 0, y: 0, k: 1 };
+      } finally {
+        isHydrating = false;
+      }
+      saveToLocalStorage();
     },
   };
 });

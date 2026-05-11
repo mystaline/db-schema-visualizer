@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
-import { useHistory } from "../composables/useHistory";
+import { useHistory, isHistoryRestoring } from "../composables/useHistory";
+import { useToast } from "../composables/useToast";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
 import TableNode from "./TableNode.vue";
 import RelationLines from "./RelationLines.vue";
+import ConfirmModal from "./ConfirmModal.vue";
 
 const schemaStore = useSchemaStore();
 const transform = computed(() => schemaStore.canvasTransform);
+const isEmbed = new URLSearchParams(window.location.search).has("embed");
 const isPanning = ref(false);
 const panOffset = ref({ x: 0, y: 0 });
 const canvasContainer = ref<HTMLElement | null>(null);
@@ -16,20 +19,47 @@ const isSpacePanning = ref(false);
 
 const { clearHistory } = useHistory();
 const { open: openCreateTableModal } = useCreateTableModal();
+const { toast } = useToast();
+const isHydrating = ref(true);
 
 // Hydrate on load: URL > localStorage > fresh
-const hydrateFromUrl = async () => {
-  const hash = window.location.hash;
-  if (hash.startsWith("#data=")) {
-    await schemaStore.loadFromShareableData(hash.slice("#data=".length));
+// Returns true if the session loaded cleanly (tables may still be empty for a new user).
+// Returns false if there was a load error — caller should not auto-open the create modal.
+const hydrateFromUrl = async (): Promise<boolean> => {
+  try {
+    if (isEmbed) { clearHistory(); return true; }
+    const hash = window.location.hash;
+    if (hash.startsWith("#data=")) {
+      const ok = await schemaStore.loadFromShareableData(hash.slice("#data=".length));
+      if (ok) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      } else {
+        schemaStore.viewMode = "full";
+        const localResult = schemaStore.loadFromLocalStorage();
+        toast(
+          localResult === "loaded"
+            ? "Share link could not be loaded. Restored your last session."
+            : "Share link could not be loaded and no saved session was found.",
+          "error",
+        );
+      }
+      clearHistory();
+      return true;
+    }
+    const result = schemaStore.loadFromLocalStorage();
     clearHistory();
-    return;
+    return result !== "error";
+  } catch (e) {
+    console.error("[SchemaCanvas] hydrateFromUrl failed", e);
+    toast("Failed to load your session. Starting fresh.", "error");
+    clearHistory();
+    return false;
   }
-  schemaStore.loadFromLocalStorage();
-  clearHistory();
 };
 
 const pendingDeleteTable = ref(false);
+const pendingDeleteTableId = ref<string | null>(null);
+const pendingDeleteTableName = ref<string | null>(null);
 
 const handleGlobalKeyDown = (e: KeyboardEvent) => {
   if (
@@ -41,24 +71,43 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     e.preventDefault();
+    pendingDeleteTableId.value = schemaStore.selectedTableId;
+    pendingDeleteTableName.value = schemaStore.selectedTable?.name ?? null;
     pendingDeleteTable.value = true;
   }
   if (e.key === "Escape") {
-    pendingDeleteTable.value = false;
+    if (pendingDeleteTable.value) cancelDeleteTable();
   }
 };
 
 const confirmDeleteTable = () => {
-  if (schemaStore.selectedTableId) {
-    schemaStore.removeTable(schemaStore.selectedTableId);
+  try {
+    if (pendingDeleteTableId.value) {
+      schemaStore.removeTable(pendingDeleteTableId.value);
+    } else {
+      toast("Could not delete — no table was selected.", "error");
+    }
+  } catch (e) {
+    console.error("[SchemaCanvas] removeTable threw unexpectedly", e);
+    toast("Failed to delete the table. Please try again.", "error");
+  } finally {
+    pendingDeleteTable.value = false;
+    pendingDeleteTableId.value = null;
+    pendingDeleteTableName.value = null;
   }
+};
+
+const cancelDeleteTable = () => {
   pendingDeleteTable.value = false;
+  pendingDeleteTableId.value = null;
+  pendingDeleteTableName.value = null;
 };
 
 const handleSpaceDown = (e: KeyboardEvent) => {
   if (e.code === "Space" && !e.repeat) {
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if (pendingDeleteTable.value) return;
     e.preventDefault();
     isSpaceDown.value = true;
   }
@@ -96,12 +145,13 @@ const handleSpaceMouseUp = () => {
 };
 
 onMounted(async () => {
-  await hydrateFromUrl();
+  const sessionOk = await hydrateFromUrl();
+  isHydrating.value = false;
   window.addEventListener("keydown", handleGlobalKeyDown);
   window.addEventListener("keydown", handleSpaceDown);
   window.addEventListener("keyup", handleSpaceUp);
   window.addEventListener("blur", resetSpaceState);
-  if (schemaStore.tables.length === 0 && schemaStore.viewMode === "full") {
+  if (sessionOk && !isEmbed && schemaStore.tables.length === 0 && schemaStore.viewMode === "full") {
     openCreateTableModal();
   }
 });
@@ -109,8 +159,10 @@ onMounted(async () => {
 watch(
   () => schemaStore.tables.length,
   (newLen) => {
-    if (newLen === 0 && schemaStore.viewMode === "full") {
-      openCreateTableModal();
+    if (!isEmbed && newLen === 0 && schemaStore.viewMode === "full" && !isHistoryRestoring.value && !isHydrating.value) {
+      nextTick(() => {
+        if (schemaStore.tables.length === 0 && !isHistoryRestoring.value) openCreateTableModal();
+      });
     }
   },
 );
@@ -306,41 +358,25 @@ const canvasStyle = computed(() => ({
       v-if="isSpaceDown"
       class="absolute inset-0 z-30"
       :class="isSpacePanning ? 'cursor-grabbing' : 'cursor-grab'"
-      @mousedown="handleSpaceMouseDown"
+      @mousedown.stop="handleSpaceMouseDown"
       @mousemove="handleSpaceMouseMove"
       @mouseup="handleSpaceMouseUp"
       @mouseleave="handleSpaceMouseUp"
     />
 
-    <!-- Delete Table Confirmation -->
-    <div
-      v-if="pendingDeleteTable && schemaStore.selectedTable"
-      class="absolute top-6 left-1/2 -translate-x-1/2 z-50 bg-secondary-900 border border-danger-500/50 rounded-xl shadow-2xl px-5 py-3 flex items-center gap-4"
-    >
-      <span class="text-sm text-secondary-50"
-        >Delete
-        <span class="font-bold text-danger-500">{{
-          schemaStore.selectedTable.name
-        }}</span
-        >?</span
-      >
-      <button
-        class="px-3 py-1 text-xs font-bold bg-danger-500/10 hover:bg-danger-500/20 text-danger-500 rounded-lg transition-colors"
-        @click="confirmDeleteTable"
-      >
-        Delete
-      </button>
-      <button
-        class="px-3 py-1 text-xs font-bold bg-secondary-800 hover:bg-secondary-700 text-secondary-300 rounded-lg transition-colors"
-        @click="pendingDeleteTable = false"
-      >
-        Cancel
-      </button>
-    </div>
+    <!-- Delete Table Confirmation Modal -->
+    <ConfirmModal
+      :is-open="pendingDeleteTable"
+      title="Delete Table"
+      :message="pendingDeleteTableName ? `'${pendingDeleteTableName}' and all its columns, indexes, and foreign keys will be permanently removed.` : undefined"
+      @confirm="confirmDeleteTable"
+      @cancel="cancelDeleteTable"
+    />
 
     <!-- Canvas HUD Controls -->
     <div
       class="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto px-1.5 py-1.5 bg-secondary-900/90 backdrop-blur-md shadow-lg border border-secondary-700 rounded-xl flex items-center gap-1 z-40"
+      @mousedown.stop
     >
       <button
         class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-secondary-800 rounded-lg font-bold text-base transition-colors text-secondary-400 hover:text-secondary-50"

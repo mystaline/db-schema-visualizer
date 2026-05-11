@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import SqlExportModal from "../SqlExportModal.vue";
+import SqlExportModal from "../ExportModal.vue";
 import { useSchemaStore } from "../../stores/schemaStore";
 
 describe("SqlExportModal.vue (Output Verification)", () => {
