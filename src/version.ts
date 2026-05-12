@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "4.6.0";
+export const APP_VERSION = "5.0.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,53 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.0.0",
+    date: "May 12, 2026",
+    badge: "new",
+    items: [
+      {
+        type: "feature",
+        text: "PWA support — install the app from your browser for a standalone, offline-capable experience with a dedicated icon.",
+      },
+      {
+        type: "feature",
+        text: "SQL export now groups each table's foreign keys and indexes directly below its CREATE TABLE block instead of accumulating them at the end of the file.",
+      },
+      {
+        type: "feature",
+        text: "Export warnings — broken foreign key and index references are flagged with a banner and inline --WARNING comments in the SQL output.",
+      },
+      {
+        type: "improvement",
+        text: "All modals now use a shared ModalShell component with consistent ESC-to-close and focus trapping.",
+      },
+      {
+        type: "improvement",
+        text: "Delete confirmations — removing a column, constraint, index, foreign key, or table now shows a ConfirmModal dialog preventing accidental data loss.",
+      },
+      {
+        type: "improvement",
+        text: "Import UX — per-tab input persistence, file reader error/abort handlers, overwrite confirmation gate, and clear error messaging via toast.",
+      },
+      {
+        type: "improvement",
+        text: "Error resilience — localStorage failures, preset loading errors, and hydration race conditions are now caught and reported gracefully with toast feedback.",
+      },
+      {
+        type: "improvement",
+        text: "History undo/redo now uses synchronous flush and guards against stale debounced operations during restore.",
+      },
+      {
+        type: "improvement",
+        text: "Removed unused legacy components (SqlExportModal, SqlImportModal, PresetTemplates, TableForm) and empty directories.",
+      },
+      {
+        type: "improvement",
+        text: "Comprehensive test suite — 38 test files covering components, stores, composables, DDL parsing, and end-to-end Playwright scenarios.",
+      },
+    ],
+  },
   {
     version: "4.6.0",
     date: "May 11, 2026",
