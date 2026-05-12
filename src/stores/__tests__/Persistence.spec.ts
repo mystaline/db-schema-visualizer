@@ -38,7 +38,7 @@ describe("LocalStorage Persistence", () => {
     localStorage.setItem("db_schema_visualizer", JSON.stringify(mockData));
     
     const success = store.loadFromLocalStorage();
-    expect(success).toBe(true);
+    expect(success).toBe("loaded");
     expect(store.tables).toHaveLength(1);
     expect(store.tables[0].name).toBe("persisted_table");
     expect(store.canvasTransform.k).toBe(1.5);

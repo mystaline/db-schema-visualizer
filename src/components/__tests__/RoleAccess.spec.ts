@@ -9,50 +9,49 @@ describe("ColumnEditor Role Access (viewMode)", () => {
     setActivePinia(createPinia());
   });
 
-  it("disables inputs and hides 'Add Attribute' in read mode", async () => {
+  it("disables inputs and hides 'Add column' in read mode", async () => {
     const store = useSchemaStore();
     store.addTable("users");
     const tId = store.tables[0].id;
     store.addColumn(tId);
     store.selectedTableId = tId;
 
-    // Set viewMode to 'read'
     store.viewMode = "read";
 
-    const wrapper = mount(ColumnEditor);
+    const wrapper = mount(ColumnEditor, {
+      global: { stubs: { Teleport: true } },
+    });
 
-    // Check if name input is readonly
     const nameInput = wrapper.find('input[aria-label^="Column name"]');
     expect(nameInput.attributes()).toHaveProperty("readonly");
 
-    // Check if checkboxes are disabled
-    const pkCheckbox = wrapper.find('input[aria-label$="is primary key"]');
-    expect(pkCheckbox.attributes()).toHaveProperty("disabled");
+    // PK button should be disabled in read mode
+    const pkBtn = wrapper.find('button[aria-label$="is primary key"]');
+    expect(pkBtn.attributes()).toHaveProperty("disabled");
 
-    // Check if 'Insert New Attribute' button is hidden
-    // Note: wrapper.find uses CSS selectors. Usually easier to check existence.
     const allButtons = wrapper.findAll("button");
-    const hasAddButton = allButtons.some(b => b.text().includes("Insert New Attribute"));
+    const hasAddButton = allButtons.some(b => b.text().toLowerCase().includes("add column"));
     expect(hasAddButton).toBe(false);
   });
 
-  it("enables inputs and shows 'Add Attribute' in full mode", async () => {
+  it("enables inputs and shows 'Add column' in full mode", async () => {
     const store = useSchemaStore();
     store.addTable("users");
     const tId = store.tables[0].id;
     store.addColumn(tId);
     store.selectedTableId = tId;
 
-    // Set viewMode to 'full' (default)
     store.viewMode = "full";
 
-    const wrapper = mount(ColumnEditor);
+    const wrapper = mount(ColumnEditor, {
+      global: { stubs: { Teleport: true } },
+    });
 
     const nameInput = wrapper.find('input[aria-label^="Column name"]');
     expect(nameInput.attributes()).not.toHaveProperty("readonly");
 
     const allButtons = wrapper.findAll("button");
-    const hasAddButton = allButtons.some(b => b.text().includes("Insert New Attribute"));
+    const hasAddButton = allButtons.some(b => b.text().toLowerCase().includes("add column"));
     expect(hasAddButton).toBe(true);
   });
 });
