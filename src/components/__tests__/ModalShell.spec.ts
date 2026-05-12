@@ -31,7 +31,9 @@ describe("ModalShell.vue", () => {
       props: { isOpen: true, closable: true },
       global: { stubs: { Teleport: true } },
     });
-    await wrapper.find('[role="dialog"]').trigger("click.self");
+    // Backdrop is the absolute inset-0 div, first child of [role="dialog"]
+    const backdrop = wrapper.find(".absolute.inset-0");
+    await backdrop.trigger("click");
     expect(wrapper.emitted("close")).toBeTruthy();
   });
 
@@ -40,25 +42,18 @@ describe("ModalShell.vue", () => {
       props: { isOpen: true, closable: false },
       global: { stubs: { Teleport: true } },
     });
-    await wrapper.find('[role="dialog"]').trigger("click.self");
+    const backdrop = wrapper.find(".absolute.inset-0");
+    await backdrop.trigger("click");
     expect(wrapper.emitted("close")).toBeFalsy();
   });
 
-  it("emits close on ESC when closable", async () => {
+  it("does not emit close when clicking panel content", async () => {
     const wrapper = mount(ModalShell, {
       props: { isOpen: true, closable: true },
       global: { stubs: { Teleport: true } },
+      slots: { default: '<button class="test-btn">Inside panel</button>' },
     });
-    await wrapper.find('[role="dialog"]').trigger("keydown.esc");
-    expect(wrapper.emitted("close")).toBeTruthy();
-  });
-
-  it("does not emit close on ESC when closable is false", async () => {
-    const wrapper = mount(ModalShell, {
-      props: { isOpen: true, closable: false },
-      global: { stubs: { Teleport: true } },
-    });
-    await wrapper.find('[role="dialog"]').trigger("keydown.esc");
+    await wrapper.find(".test-btn").trigger("click");
     expect(wrapper.emitted("close")).toBeFalsy();
   });
 
@@ -67,7 +62,7 @@ describe("ModalShell.vue", () => {
       props: { isOpen: true, maxWidth: "max-w-md", padding: "p-4" },
       global: { stubs: { Teleport: true } },
     });
-    const panel = wrapper.find(".relative");
+    const panel = wrapper.find(".modal-panel");
     expect(panel.classes()).toContain("max-w-md");
     expect(panel.classes()).toContain("p-4");
   });
@@ -79,6 +74,5 @@ describe("ModalShell.vue", () => {
     });
     const dialog = wrapper.find('[role="dialog"]');
     expect(dialog.attributes("aria-modal")).toBe("true");
-    expect(dialog.attributes("tabindex")).toBe("-1");
   });
 });

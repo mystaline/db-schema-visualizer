@@ -46,7 +46,8 @@ const handleShare = async (permission: "full" | "read") => {
     const label = permission === "read" ? "Read Only" : "Full Access";
     toast(`${label} link copied to clipboard!`);
   } catch {
-    toast(`Clipboard blocked — copy this URL manually: ${url}`, "error");
+    window.location.hash = `data=${base64}`;
+    toast("Clipboard unavailable — share URL set in address bar. Copy it manually.", "error");
   }
 };
 

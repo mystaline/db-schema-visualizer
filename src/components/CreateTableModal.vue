@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
 import { useImportModal } from "../composables/useImportModal";
+import { useModalKeyboard } from "../composables/useModalKeyboard";
 import ModalShell from "./ModalShell.vue";
 
 const schemaStore = useSchemaStore();
@@ -50,6 +51,10 @@ const handleSubmit = () => {
   schemaStore.addTable(name);
   close();
 };
+
+useModalKeyboard(isOpen, {
+  onEsc: () => closable.value && close(),
+});
 </script>
 
 <template>

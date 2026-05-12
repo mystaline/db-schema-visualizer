@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from "vue";
+import { ref, computed, watch, toRef } from "vue";
 import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
 import { useHistory } from "../composables/useHistory";
 import ModalShell from "./ModalShell.vue";
 import ConfirmModal from "./ConfirmModal.vue";
+import { useModalKeyboard } from "../composables/useModalKeyboard";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -136,45 +137,16 @@ const triggerFileSelect = () => {
   fileInputRef.value?.click();
 };
 
-// ESC + focus trap
-const onKeyDown = (e: KeyboardEvent) => {
-  if (!props.isOpen) return;
-  if (e.key === "Tab") {
-    const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]):not([readonly]), [tabindex]:not([tabindex="-1"])',
-    );
-    if (!focusables?.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  }
-};
+useModalKeyboard(toRef(props, "isOpen"), {
+  onEsc: () => emit("close"),
+  modalRef,
+  onOpen: () => (modalRef.value?.querySelector("textarea") as HTMLElement)?.focus(),
+});
 
 watch(
   () => props.isOpen,
-  async (isOpen) => {
-    if (isOpen) {
-      document.addEventListener("keydown", onKeyDown);
-      await nextTick();
-      (modalRef.value?.querySelector("textarea") as HTMLElement)?.focus();
-    } else {
-      document.removeEventListener("keydown", onKeyDown);
-      pendingImportConfirm.value = false;
-    }
-  },
+  (isOpen) => { if (!isOpen) pendingImportConfirm.value = false; },
 );
-
-onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>

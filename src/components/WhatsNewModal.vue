@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, watch } from "vue";
+import { ref, toRef, watch } from "vue";
 import { APP_VERSION, CHANGELOG } from "../version";
 import ModalShell from "./ModalShell.vue";
+import { useModalKeyboard } from "../composables/useModalKeyboard";
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits(["close"]);
@@ -43,46 +44,16 @@ const typeMeta: Record<string, { label: string; color: string }> = {
   },
 };
 
-// Focus trap + ESC
-const onKeyDown = (e: KeyboardEvent) => {
-  if (!props.isOpen) return;
-  if (e.key === "Tab") {
-    const focusables = modalRef.value?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    if (!focusables?.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (e.shiftKey) {
-      if (document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  }
-};
+useModalKeyboard(toRef(props, "isOpen"), {
+  onEsc: () => emit("close"),
+  modalRef,
+  onOpen: () => closeBtnRef.value?.focus(),
+});
 
 watch(
   () => props.isOpen,
-  async (open) => {
-    if (open) {
-      // Reset to latest on every open
-      openVersion.value = CHANGELOG[0].version;
-      document.addEventListener("keydown", onKeyDown);
-      await nextTick();
-      closeBtnRef.value?.focus();
-    } else {
-      document.removeEventListener("keydown", onKeyDown);
-    }
-  },
+  (open) => { if (open) openVersion.value = CHANGELOG[0].version; },
 );
-
-onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 </script>
 
 <template>

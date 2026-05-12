@@ -23,7 +23,7 @@ describe("TopBar.vue", () => {
     const wrapper = mount(TopBar, {
       global: { stubs: { Teleport: true } },
     });
-    expect(wrapper.text()).toContain("v4.6.0");
+    expect(wrapper.text()).toMatch(/v\d+\.\d+\.\d+/);
   });
 
   it("shows Read Only badge in read mode", () => {

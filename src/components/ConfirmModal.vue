@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { toRef } from "vue";
 import ModalShell from "./ModalShell.vue";
+import { useModalKeyboard } from "../composables/useModalKeyboard";
 
-defineProps<{
+const props = defineProps<{
   isOpen: boolean;
   title: string;
   message?: string;
@@ -12,6 +14,11 @@ const emit = defineEmits<{
   confirm: [];
   cancel: [];
 }>();
+
+useModalKeyboard(toRef(props, "isOpen"), {
+  onEsc: () => emit("cancel"),
+  onEnter: () => emit("confirm"),
+});
 </script>
 
 <template>
