@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.1.0";
+export const APP_VERSION = "5.1.1";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,17 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.1.1",
+    date: "May 12, 2026",
+    badge: "fix",
+    items: [
+      {
+        type: "fix",
+        text: "Mouse wheel zoom and pan are now properly dampened — no more jarring jumps when scrolling with a mouse instead of a trackpad.",
+      },
+    ],
+  },
   {
     version: "5.1.0",
     date: "May 12, 2026",
