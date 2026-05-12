@@ -12,7 +12,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5175',
     trace: 'on-first-retry',
     actionTimeout: 10000,
   },
@@ -23,8 +23,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:5173',
+    command: 'pnpm run dev:e2e',
+    url: 'http://localhost:5175',
     reuseExistingServer: !process.env.CI,
     timeout: 15000,
   },
