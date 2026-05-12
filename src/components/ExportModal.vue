@@ -24,8 +24,8 @@ const generatedSql = computed(() => {
   let sql = `-- Database Schema SQL Export\n`;
   sql += `-- Generated on ${new Date().toLocaleString()}\n\n`;
 
-  // 1. Tables (Columns & Primary Keys)
   schemaStore.tables.forEach((table) => {
+    // Table notes as SQL comments
     if (table.notes?.trim()) {
       table.notes
         .trim()
@@ -58,39 +58,36 @@ const generatedSql = computed(() => {
     });
 
     sql += lines.join(",\n");
-    sql += `\n);\n\n`;
-  });
+    sql += `\n);`;
 
-  // 2. Foreign Keys (Alter Table)
-  schemaStore.foreignKeys.forEach((fk) => {
-    const sourceTable = schemaStore.tables.find(
-      (t) => t.id === fk.sourceTableId,
-    );
-    const targetTable = schemaStore.tables.find(
-      (t) => t.id === fk.targetTableId,
+    // Foreign Keys where this table is the source
+    const tableFKs = schemaStore.foreignKeys.filter(
+      (fk) => fk.sourceTableId === table.id,
     );
 
-    if (sourceTable && targetTable) {
-      const sourceCol = sourceTable.columns.find(
-        (c) => c.id === fk.sourceColumnId,
-      );
-      const targetCol = targetTable.columns.find(
-        (c) => c.id === fk.targetColumnId,
+    tableFKs.forEach((fk) => {
+      const targetTable = schemaStore.tables.find(
+        (t) => t.id === fk.targetTableId,
       );
 
-      if (sourceCol && targetCol) {
-        sql += `ALTER TABLE ${sourceTable.name}\n`;
-        sql += `  ADD CONSTRAINT fk_${sourceTable.name}_${sourceCol.name}\n`;
-        sql += `  FOREIGN KEY (${sourceCol.name}) REFERENCES ${targetTable.name} (${targetCol.name})\n`;
-        sql += `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};\n\n`;
-      } else {
-        sql += `-- WARNING: foreign key between ${sourceTable.name} and ${targetTable.name} was skipped (column reference is broken)\n\n`;
+      if (targetTable) {
+        const sourceCol = table.columns.find((c) => c.id === fk.sourceColumnId);
+        const targetCol = targetTable.columns.find(
+          (c) => c.id === fk.targetColumnId,
+        );
+
+        if (sourceCol && targetCol) {
+          sql += `\n\nALTER TABLE ${table.name}\n`;
+          sql += `  ADD CONSTRAINT fk_${table.name}_${sourceCol.name}\n`;
+          sql += `  FOREIGN KEY (${sourceCol.name}) REFERENCES ${targetTable.name} (${targetCol.name})\n`;
+          sql += `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};`;
+        } else {
+          sql += `\n-- WARNING: foreign key between ${table.name} and ${targetTable.name} was skipped (column reference is broken)`;
+        }
       }
-    }
-  });
+    });
 
-  // 3. Indexes
-  schemaStore.tables.forEach((table) => {
+    // Indexes on this table
     table.indexes.forEach((idx) => {
       const parts: string[] = [];
 
@@ -114,11 +111,13 @@ const generatedSql = computed(() => {
       if (parts.length > 0) {
         const uniqueStr = idx.type === "unique" ? " UNIQUE" : "";
         const whereStr = idx.filter ? ` WHERE ${idx.filter}` : "";
-        sql += `CREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};\n`;
+        sql += `\n\nCREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};`;
       } else if ((idx.parts ?? []).length > 0) {
-        sql += `-- WARNING: index ${idx.name} on ${table.name} was skipped (all column references are broken)\n`;
+        sql += `\n-- WARNING: index ${idx.name} on ${table.name} was skipped (all column references are broken)`;
       }
     });
+
+    sql += `\n\n`;
   });
 
   return sql;
@@ -242,183 +241,21 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
 <template>
   <ModalShell :is-open="isOpen" @close="emit('close')">
+    <div
+      ref="modalRef"
+      class="w-full max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl overflow-hidden flex flex-col"
+    >
+      <!-- Header -->
       <div
-        ref="modalRef"
-        class="w-full max-h-[85vh] bg-secondary-900 border border-secondary-800 rounded-3xl overflow-hidden flex flex-col"
+        class="px-8 py-6 border-b border-secondary-800 flex items-center justify-between bg-secondary-950/30 shrink-0"
       >
-        <!-- Header -->
-        <div
-          class="px-8 py-6 border-b border-secondary-800 flex items-center justify-between bg-secondary-950/30 shrink-0"
-        >
-          <div class="flex items-center gap-4">
-            <div
-              class="w-10 h-10 rounded-2xl bg-success-500/10 border border-success-500/20 flex items-center justify-center"
-            >
-              <svg
-                aria-hidden="true"
-                class="w-6 h-6 text-success-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 00-2 2z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3
-                id="export-modal-title"
-                class="text-xl font-bold text-secondary-50 tracking-tight"
-              >
-                Schema Export
-              </h3>
-              <p
-                class="text-xs text-secondary-400 font-medium font-mono uppercase tracking-widest mt-0.5"
-              >
-                PostgreSQL DDL · JSON Snapshot
-              </p>
-            </div>
-          </div>
-          <button
-            class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-secondary-800 text-secondary-500 hover:text-secondary-50 transition-all focus:ring-2 focus:ring-primary-500 focus:outline-none"
-            aria-label="Close modal"
-            @click="emit('close')"
-          >
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Tab Switcher -->
-        <div
-          class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-800 bg-secondary-950/20"
-        >
-          <button
-            id="export-tab-sql"
-            class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
-            :class="
-              activeTab === 'sql'
-                ? 'text-success-400 bg-secondary-900 border border-b-0 border-secondary-700'
-                : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
-            "
-            @click="activeTab = 'sql'"
-          >
-            <span class="flex items-center gap-2">
-              <svg
-                class="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                />
-              </svg>
-              SQL
-            </span>
-          </button>
-          <button
-            id="export-tab-json"
-            class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
-            :class="
-              activeTab === 'json'
-                ? 'text-primary-400 bg-secondary-900 border border-b-0 border-secondary-700'
-                : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
-            "
-            @click="activeTab = 'json'"
-          >
-            <span class="flex items-center gap-2">
-              <svg
-                class="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2zM9 7h6m-6 4h6m-6 4h4"
-                />
-              </svg>
-              JSON
-            </span>
-          </button>
-        </div>
-
-        <!-- Body -->
-        <div class="flex-1 overflow-hidden p-8 flex flex-col gap-4">
-          <!-- Empty schema warning -->
+        <div class="flex items-center gap-4">
           <div
-            v-if="schemaStore.tables.length === 0"
-            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
-          >
-            <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p class="text-[11px] font-medium leading-relaxed">Your schema is empty — there is nothing to export yet.</p>
-          </div>
-          <!-- Broken reference warning -->
-          <div
-            v-if="hasBrokenExport && activeTab === 'sql'"
-            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
-          >
-            <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p class="text-[11px] font-medium leading-relaxed">Some foreign keys or indexes reference columns that no longer exist and will be skipped. Check the <code class="font-mono">-- WARNING</code> comments in the SQL output.</p>
-          </div>
-          <div class="flex-1 relative group">
-            <div
-              class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"
-              :class="
-                activeTab === 'sql'
-                  ? 'bg-linear-to-r from-primary-500/20 to-success-500/20'
-                  : 'bg-linear-to-r from-primary-500/20 to-info-500/20'
-              "
-            />
-            <textarea
-              :value="activeContent"
-              readonly
-              :aria-label="
-                activeTab === 'sql' ? 'Generated SQL Code' : 'Generated JSON'
-              "
-              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
-            />
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div
-          class="px-8 py-6 border-t border-secondary-800 bg-secondary-950/30 shrink-0 flex gap-4"
-        >
-          <button
-            ref="copyBtnRef"
-            class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-secondary-500 focus:outline-none"
-            aria-label="Copy to clipboard"
-            @click="copyToClipboard"
+            class="w-10 h-10 rounded-2xl bg-success-500/10 border border-success-500/20 flex items-center justify-center"
           >
             <svg
               aria-hidden="true"
-              class="w-5 h-5 opacity-70"
+              class="w-6 h-6 text-success-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -427,41 +264,230 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 00-2 2z"
               />
             </svg>
-            Copy Snippet
-          </button>
-          <button
-            class="px-12 font-bold py-4 rounded-xl transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-primary-500 focus:outline-none text-white"
+          </div>
+          <div>
+            <h3
+              id="export-modal-title"
+              class="text-xl font-bold text-secondary-50 tracking-tight"
+            >
+              Schema Export
+            </h3>
+            <p
+              class="text-xs text-secondary-400 font-medium font-mono uppercase tracking-widest mt-0.5"
+            >
+              PostgreSQL DDL · JSON Snapshot
+            </p>
+          </div>
+        </div>
+        <button
+          class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-secondary-800 text-secondary-500 hover:text-secondary-50 transition-all focus:ring-2 focus:ring-primary-500 focus:outline-none"
+          aria-label="Close modal"
+          @click="emit('close')"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div
+        class="px-8 pt-5 pb-0 shrink-0 flex items-center gap-1 border-b border-secondary-800 bg-secondary-950/20"
+      >
+        <button
+          id="export-tab-sql"
+          class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
+          :class="
+            activeTab === 'sql'
+              ? 'text-success-400 bg-secondary-900 border border-b-0 border-secondary-700'
+              : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
+          "
+          @click="activeTab = 'sql'"
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+              />
+            </svg>
+            SQL
+          </span>
+        </button>
+        <button
+          id="export-tab-json"
+          class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
+          :class="
+            activeTab === 'json'
+              ? 'text-primary-400 bg-secondary-900 border border-b-0 border-secondary-700'
+              : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
+          "
+          @click="activeTab = 'json'"
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2zM9 7h6m-6 4h6m-6 4h4"
+              />
+            </svg>
+            JSON
+          </span>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="flex-1 overflow-hidden p-8 flex flex-col gap-4">
+        <!-- Empty schema warning -->
+        <div
+          v-if="schemaStore.tables.length === 0"
+          class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+        >
+          <svg
+            class="w-4 h-4 shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <p class="text-[11px] font-medium leading-relaxed">
+            Your schema is empty — there is nothing to export yet.
+          </p>
+        </div>
+        <!-- Broken reference warning -->
+        <div
+          v-if="hasBrokenExport && activeTab === 'sql'"
+          class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+        >
+          <svg
+            class="w-4 h-4 shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <p class="text-[11px] font-medium leading-relaxed">
+            Some foreign keys or indexes reference columns that no longer exist
+            and will be skipped. Check the
+            <code class="font-mono">-- WARNING</code> comments in the SQL
+            output.
+          </p>
+        </div>
+        <div class="flex-1 relative group">
+          <div
+            class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"
             :class="
               activeTab === 'sql'
-                ? 'bg-linear-to-r from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600'
-                : 'bg-linear-to-r from-info-500 to-info-700 hover:from-info-400 hover:to-info-600'
+                ? 'bg-linear-to-r from-primary-500/20 to-success-500/20'
+                : 'bg-linear-to-r from-primary-500/20 to-info-500/20'
             "
+          />
+          <textarea
+            :value="activeContent"
+            readonly
             :aria-label="
-              activeTab === 'sql' ? 'Export SQL file' : 'Export JSON file'
+              activeTab === 'sql' ? 'Generated SQL Code' : 'Generated JSON'
             "
-            @click="downloadFile"
-          >
-            <svg
-              aria-hidden="true"
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            {{ activeTab === "sql" ? "Export .SQL" : "Export .JSON" }}
-          </button>
+            class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
+          />
         </div>
       </div>
+
+      <!-- Footer -->
+      <div
+        class="px-8 py-6 border-t border-secondary-800 bg-secondary-950/30 shrink-0 flex gap-4"
+      >
+        <button
+          ref="copyBtnRef"
+          class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-secondary-500 focus:outline-none"
+          aria-label="Copy to clipboard"
+          @click="copyToClipboard"
+        >
+          <svg
+            aria-hidden="true"
+            class="w-5 h-5 opacity-70"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+            />
+          </svg>
+          Copy Snippet
+        </button>
+        <button
+          class="px-12 font-bold py-4 rounded-xl transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-primary-500 focus:outline-none text-white"
+          :class="
+            activeTab === 'sql'
+              ? 'bg-linear-to-r from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600'
+              : 'bg-linear-to-r from-info-500 to-info-700 hover:from-info-400 hover:to-info-600'
+          "
+          :aria-label="
+            activeTab === 'sql' ? 'Export SQL file' : 'Export JSON file'
+          "
+          @click="downloadFile"
+        >
+          <svg
+            aria-hidden="true"
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+          {{ activeTab === "sql" ? "Export .SQL" : "Export .JSON" }}
+        </button>
+      </div>
+    </div>
   </ModalShell>
 </template>
 
