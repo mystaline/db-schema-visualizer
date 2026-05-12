@@ -27,12 +27,21 @@ const isHydrating = ref(true);
 // Returns false if there was a load error — caller should not auto-open the create modal.
 const hydrateFromUrl = async (): Promise<boolean> => {
   try {
-    if (isEmbed) { clearHistory(); return true; }
+    if (isEmbed) {
+      clearHistory();
+      return true;
+    }
     const hash = window.location.hash;
     if (hash.startsWith("#data=")) {
-      const ok = await schemaStore.loadFromShareableData(hash.slice("#data=".length));
+      const ok = await schemaStore.loadFromShareableData(
+        hash.slice("#data=".length),
+      );
       if (ok) {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
       } else {
         schemaStore.viewMode = "full";
         const localResult = schemaStore.loadFromLocalStorage();
@@ -151,7 +160,12 @@ onMounted(async () => {
   window.addEventListener("keydown", handleSpaceDown);
   window.addEventListener("keyup", handleSpaceUp);
   window.addEventListener("blur", resetSpaceState);
-  if (sessionOk && !isEmbed && schemaStore.tables.length === 0 && schemaStore.viewMode === "full") {
+  if (
+    sessionOk &&
+    !isEmbed &&
+    schemaStore.tables.length === 0 &&
+    schemaStore.viewMode === "full"
+  ) {
     openCreateTableModal();
   }
 });
@@ -159,9 +173,16 @@ onMounted(async () => {
 watch(
   () => schemaStore.tables.length,
   (newLen) => {
-    if (!isEmbed && newLen === 0 && schemaStore.viewMode === "full" && !isHistoryRestoring.value && !isHydrating.value) {
+    if (
+      !isEmbed &&
+      newLen === 0 &&
+      schemaStore.viewMode === "full" &&
+      !isHistoryRestoring.value &&
+      !isHydrating.value
+    ) {
       nextTick(() => {
-        if (schemaStore.tables.length === 0 && !isHistoryRestoring.value) openCreateTableModal();
+        if (schemaStore.tables.length === 0 && !isHistoryRestoring.value)
+          openCreateTableModal();
       });
     }
   },
@@ -259,11 +280,16 @@ const handleTouchEnd = () => {
 const handleWheel = (e: WheelEvent) => {
   e.preventDefault();
 
+  // Distinguish mouse wheel (large discrete steps, e.g. ±100) from trackpad
+  // (small smooth deltas, e.g. ±1–10). Mouse wheel panning needs damping.
+  const isMouseWheel = Math.abs(e.deltaY) > 30;
+
   if (e.ctrlKey) {
     // Trackpad pinch or Ctrl+scroll → zoom to cursor
     const oldScale = schemaStore.canvasTransform.k;
+    const speed = isMouseWheel ? 0.001 : 0.03;
     const newScale = Math.min(
-      Math.max(0.2, oldScale * (1 - e.deltaY * 0.03)),
+      Math.max(0.2, oldScale * (1 - e.deltaY * speed)),
       2,
     );
 
@@ -278,14 +304,15 @@ const handleWheel = (e: WheelEvent) => {
     schemaStore.canvasTransform.x =
       mouseX -
       (mouseX - schemaStore.canvasTransform.x) * (newScale / oldScale) -
-      e.deltaX;
+      (isMouseWheel ? 0 : e.deltaX);
     schemaStore.canvasTransform.y =
       mouseY - (mouseY - schemaStore.canvasTransform.y) * (newScale / oldScale);
     schemaStore.canvasTransform.k = newScale;
   } else {
     // 2-finger slide or scroll wheel → pan
-    schemaStore.canvasTransform.x -= e.deltaX;
-    schemaStore.canvasTransform.y -= e.deltaY;
+    const damp = isMouseWheel ? 0.4 : 1;
+    schemaStore.canvasTransform.x -= e.deltaX * damp;
+    schemaStore.canvasTransform.y -= e.deltaY * damp;
   }
 };
 
@@ -368,7 +395,11 @@ const canvasStyle = computed(() => ({
     <ConfirmModal
       :is-open="pendingDeleteTable"
       title="Delete Table"
-      :message="pendingDeleteTableName ? `'${pendingDeleteTableName}' and all its columns, indexes, and foreign keys will be permanently removed.` : undefined"
+      :message="
+        pendingDeleteTableName
+          ? `'${pendingDeleteTableName}' and all its columns, indexes, and foreign keys will be permanently removed.`
+          : undefined
+      "
       @confirm="confirmDeleteTable"
       @cancel="cancelDeleteTable"
     />
