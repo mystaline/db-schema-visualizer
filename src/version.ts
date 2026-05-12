@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.0.0";
+export const APP_VERSION = "5.1.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -24,8 +24,31 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "5.0.0",
+    version: "5.1.0",
     date: "May 12, 2026",
+    badge: "new",
+    items: [
+      {
+        type: "feature",
+        text: "Keyboard shortcuts in dialogs — press Enter to confirm and Escape to close, now working across all modals.",
+      },
+      {
+        type: "fix",
+        text: "Clicking outside a dialog now reliably closes it — previously Export, Share, and delete confirmations would stay open.",
+      },
+      {
+        type: "improvement",
+        text: "When clipboard access is blocked, the share link is placed in the address bar so you can still copy it manually.",
+      },
+      {
+        type: "improvement",
+        text: "Notification banners now wrap their text to fit the screen instead of overflowing off the edge.",
+      },
+    ],
+  },
+  {
+    version: "5.0.0",
+    date: "May 11, 2026",
     badge: "new",
     items: [
       {
@@ -66,7 +89,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       },
       {
         type: "improvement",
-        text: "Comprehensive test suite — 38 test files covering components, stores, composables, DDL parsing, and end-to-end Playwright scenarios.",
+        text: "Comprehensive test suite — 38 unit test files (238 tests) plus 9 end-to-end Playwright scenarios.",
       },
     ],
   },
