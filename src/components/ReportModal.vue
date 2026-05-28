@@ -6,7 +6,7 @@ import { useToast } from "../composables/useToast";
 import ModalShell from "./ModalShell.vue";
 
 const WORKER_URL = import.meta.env.VITE_REPORT_WORKER_URL as string;
-const COOLDOWN_KEY = "schema_vis_last_report";
+const COOLDOWN_KEY = "schema_viz_last_report";
 const COOLDOWN_SECONDS = 86400;
 
 const { isOpen, close } = useReportModal();

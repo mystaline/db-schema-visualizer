@@ -56,7 +56,24 @@ const dismissWhatsNew = () => {
   }
 };
 
+const migrateStorageKeys = () => {
+  const renames: [string, string][] = [
+    ["schema_vis_version", "schema_viz_version"],
+    ["schema_vis_last_report", "schema_viz_last_report"],
+  ];
+  for (const [oldKey, newKey] of renames) {
+    try {
+      const val = localStorage.getItem(oldKey);
+      if (val !== null) {
+        localStorage.setItem(newKey, val);
+        localStorage.removeItem(oldKey);
+      }
+    } catch { /* ignore */ }
+  }
+};
+
 onMounted(() => {
+  migrateStorageKeys();
   document.addEventListener("keydown", onKeyDown);
 
   const isEmbed = new URLSearchParams(window.location.search).has("embed");

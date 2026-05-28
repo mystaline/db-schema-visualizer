@@ -6,7 +6,7 @@
 export const APP_VERSION = "5.1.4";
 
 /** localStorage key used to persist the last-seen version. */
-export const VERSION_STORAGE_KEY = "schema_vis_version";
+export const VERSION_STORAGE_KEY = "schema_viz_version";
 
 export interface ChangelogEntry {
   version: string;
