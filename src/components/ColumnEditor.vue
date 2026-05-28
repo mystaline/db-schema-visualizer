@@ -207,9 +207,9 @@ const onDragEnd = () => {
             </button>
           </div>
 
-          <!-- Row 2: type selector + PK / NULL / UNQ pill toggles -->
+          <!-- Row 2: type selector (full width) -->
           <div
-            class="flex items-center gap-1.5 px-2 pb-1.5"
+            class="px-2 pb-1"
             :class="schemaStore.viewMode === 'full' ? 'pl-[34px]' : 'pl-2'"
           >
             <TypeSelector
@@ -217,10 +217,16 @@ const onDragEnd = () => {
               :disabled="schemaStore.viewMode === 'read'"
               @update:model-value="(val) => updateColumn(col.id, { type: val })"
             />
-            <div class="flex-1" />
+          </div>
+
+          <!-- Row 3: PK / NULL / UNQ pill toggles -->
+          <div
+            class="flex items-center gap-1.5 px-2 pb-1.5"
+            :class="schemaStore.viewMode === 'full' ? 'pl-[34px]' : 'pl-2'"
+          >
             <!-- PK pill toggle -->
             <button
-              class="h-6 min-w-[32px] px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
+              class="h-6 flex-1 px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
               :class="
                 col.isPrimaryKey
                   ? 'bg-primary-500/10 border-primary-500 text-primary-400'
@@ -234,7 +240,7 @@ const onDragEnd = () => {
             </button>
             <!-- NULL pill toggle -->
             <button
-              class="h-6 min-w-[32px] px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
+              class="h-6 flex-1 px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
               :class="
                 col.isNullable && !col.isPrimaryKey
                   ? 'bg-secondary-500/10 border-secondary-500 text-secondary-300'
@@ -248,7 +254,7 @@ const onDragEnd = () => {
             </button>
             <!-- UNQ pill toggle -->
             <button
-              class="h-6 min-w-[32px] px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
+              class="h-6 flex-1 px-2 rounded-md text-[10px] font-bold font-mono tracking-wide border transition-all"
               :class="
                 col.isUnique
                   ? 'bg-danger-400/10 border-danger-400 text-danger-400'

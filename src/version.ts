@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.1.4";
+export const APP_VERSION = "5.1.5";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_viz_version";
@@ -23,6 +23,21 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.1.5",
+    date: "May 29, 2026",
+    badge: "fix",
+    items: [
+      {
+        type: "fix",
+        text: "Column type and PK/NULL/UNQ toggles now appear on separate rows — no more cramped layout in the detail panel.",
+      },
+      {
+        type: "fix",
+        text: "App name corrected from SCHEMAVIS to SCHEMAVIZ in the top bar.",
+      },
+    ],
+  },
   {
     version: "5.1.4",
     date: "May 28, 2026",

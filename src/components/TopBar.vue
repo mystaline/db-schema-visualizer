@@ -141,7 +141,7 @@ const openImport = () => {
           class="text-[15px] font-bold tracking-tight text-secondary-50 font-mono uppercase"
         >
           <span class="hidden sm:inline">SCHEMA</span
-          ><span class="text-primary-400">VIS</span>
+          ><span class="text-primary-400">VIZ</span>
         </h1>
       </div>
 
