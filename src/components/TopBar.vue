@@ -157,7 +157,7 @@ const openImport = () => {
 
       <!-- Presets (Desktop Only) -->
       <div
-        v-if="schemaStore.viewMode === 'full'"
+        v-if="schemaStore.viewMode === 'full' || schemaStore.isEmbed"
         class="hidden lg:flex items-center gap-3"
       >
         <span

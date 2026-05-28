@@ -185,9 +185,9 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
       <!-- Right Detail Panel (desktop only) -->
       <div
         class="hidden lg:flex flex-none border-l border-secondary-700 bg-secondary-950 z-20 overflow-hidden transition-[width] duration-200"
-        :class="rightCollapsed ? 'w-0 border-l-0' : 'w-96'"
+        :class="rightCollapsed ? 'w-0 border-l-0' : 'w-[26rem]'"
       >
-        <DetailPanel class="w-96 flex-none" />
+        <DetailPanel class="w-[26rem] flex-none" />
       </div>
 
       <!-- Mobile UI -->
