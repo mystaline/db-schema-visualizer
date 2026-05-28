@@ -60,6 +60,7 @@ const migrateStorageKeys = () => {
   const renames: [string, string][] = [
     ["schema_vis_version", "schema_viz_version"],
     ["schema_vis_last_report", "schema_viz_last_report"],
+    ["schema-vis-theme", "schema-viz-theme"],
   ];
   for (const [oldKey, newKey] of renames) {
     try {

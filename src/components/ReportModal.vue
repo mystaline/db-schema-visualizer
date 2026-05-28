@@ -58,7 +58,7 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
   inlineError.value = "";
 
-  const subject = `[SchemaVis] ${type.value} — ${message.value.slice(0, 60)}${message.value.length > 60 ? "…" : ""}`;
+  const subject = `[SchemaViz] ${type.value} — ${message.value.slice(0, 60)}${message.value.length > 60 ? "…" : ""}`;
   const body = `Type: ${type.value}\n\n${message.value}\n\nReply to: ${email.value.trim() || "not provided"}`;
 
   try {
@@ -66,7 +66,7 @@ const handleSubmit = async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        source: "SchemaVis",
+        source: "SchemaViz",
         subject,
         from_name: email.value.trim() || "Anonymous",
         message: body,

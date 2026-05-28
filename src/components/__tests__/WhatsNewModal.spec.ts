@@ -91,6 +91,6 @@ describe("WhatsNewModal.vue", () => {
       props: { isOpen: true },
       global: { stubs: { Teleport: true } },
     });
-    expect(wrapper.text()).toContain("SchemaVis");
+    expect(wrapper.text()).toContain("SchemaViz");
   });
 });

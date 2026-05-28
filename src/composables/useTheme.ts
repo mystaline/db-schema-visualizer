@@ -1,7 +1,7 @@
 import { ref, watch } from 'vue'
 
 // Module-level singleton — safe for browser SPA; not SSR-safe
-const STORAGE_KEY = 'schema-vis-theme'
+const STORAGE_KEY = 'schema-viz-theme'
 const isDark = ref(localStorage.getItem(STORAGE_KEY) !== 'light')
 
 function applyTheme(dark: boolean) {

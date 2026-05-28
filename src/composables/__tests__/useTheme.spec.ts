@@ -35,17 +35,17 @@ describe("useTheme", () => {
   });
 
   it("watch persists preference to localStorage", async () => {
-    localStorage.removeItem("schema-vis-theme");
+    localStorage.removeItem("schema-viz-theme");
 
     toggleTheme(); // dark → light
     await nextTick();
     expect(isDark.value).toBe(false);
-    expect(localStorage.getItem("schema-vis-theme")).toBe("light");
+    expect(localStorage.getItem("schema-viz-theme")).toBe("light");
 
     toggleTheme(); // light → dark
     await nextTick();
     expect(isDark.value).toBe(true);
-    expect(localStorage.getItem("schema-vis-theme")).toBe("dark");
+    expect(localStorage.getItem("schema-viz-theme")).toBe("dark");
   });
 
   it("watch toggles the document class", async () => {
