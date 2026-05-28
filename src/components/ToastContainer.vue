@@ -8,7 +8,7 @@ const { toasts } = useToast();
     <div
       aria-live="polite"
       aria-atomic="false"
-      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-99999 flex flex-col items-center gap-2 pointer-events-none"
+      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[300000] flex flex-col items-center gap-2 pointer-events-none"
     >
       <TransitionGroup name="toast">
         <div
