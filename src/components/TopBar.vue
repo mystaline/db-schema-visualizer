@@ -242,6 +242,7 @@ const openImport = () => {
     <div class="flex items-center gap-2 lg:gap-4">
       <!-- Report / Feedback -->
       <button
+        v-if="!schemaStore.isEmbed"
         class="hidden sm:flex items-center justify-center w-8 h-8 lg:w-9 lg:h-9 bg-secondary-900 hover:bg-secondary-800 border border-secondary-700 rounded-lg lg:rounded-xl text-secondary-400 hover:text-danger-400 transition-all active:scale-95"
         title="Report an issue"
         @click="openReport"

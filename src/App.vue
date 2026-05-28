@@ -80,7 +80,6 @@ onMounted(() => {
   if (isEmbed) {
     schemaStore.isEmbed = true;
     schemaStore.viewMode = "read";
-    rightCollapsed.value = true;
     try {
       schemaStore.loadPreset("blog");
       schemaStore.selectedTableId = schemaStore.tables[0]?.id ?? null;
@@ -112,7 +111,6 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
   >
     <!-- Top Bar -->
     <TopBar
-      v-if="!schemaStore.isEmbed"
       class="flex-none h-14 border-b border-secondary-700 bg-secondary-950/90 backdrop-blur-md z-30"
       @open-whats-new="showWhatsNew = true"
     />
