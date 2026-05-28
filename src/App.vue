@@ -80,8 +80,10 @@ onMounted(() => {
   if (isEmbed) {
     schemaStore.isEmbed = true;
     schemaStore.viewMode = "read";
+    rightCollapsed.value = true;
     try {
       schemaStore.loadPreset("blog");
+      schemaStore.selectedTableId = schemaStore.tables[0]?.id ?? null;
     } catch (e) {
       console.error("[App] Failed to load embed preset", e);
       toast("Failed to load the embedded schema. The canvas is empty.", "error");
@@ -160,6 +162,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
 
         <!-- Right collapse toggle (desktop only) -->
         <button
+          v-if="!schemaStore.isEmbed"
           class="hidden lg:flex absolute top-6 right-0 z-25 items-center justify-center w-5 h-10 bg-primary-600/20 hover:bg-primary-600 border border-primary-500/40 hover:border-primary-500 rounded-l-lg text-primary-400 hover:text-white transition-all cursor-pointer shadow-md"
           @click="rightCollapsed = !rightCollapsed"
           :title="rightCollapsed ? 'Expand panel' : 'Collapse panel'"
