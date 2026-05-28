@@ -66,8 +66,9 @@ const handleSubmit = async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        source: "SchemaVis",
         subject,
-        from_name: email.value.trim() || "SchemaVis User",
+        from_name: email.value.trim() || "Anonymous",
         message: body,
       }),
     });
