@@ -529,7 +529,12 @@ export const useSchemaStore = defineStore("schema", () => {
 
       // Apply atomically — all parsing succeeded. isHydrating prevents saveToLocalStorage
       // from overwriting the user's own schema just because they opened a share link.
-      isHydrating = true;
+      // Exception: m=1 signals a cross-origin migration. Only persist if the user has no
+      // existing schema at this origin — if they do, their local work takes priority.
+      const isMigration = parsed.m === 1;
+      const hasLocalSchema = !!localStorage.getItem("db_schema_visualizer");
+      const shouldPersistMigration = isMigration && !hasLocalSchema;
+      if (!shouldPersistMigration) isHydrating = true;
       try {
         viewMode.value = newViewMode;
         if (newTables !== null) tables.value = newTables;
@@ -539,8 +544,9 @@ export const useSchemaStore = defineStore("schema", () => {
           selectedTableId.value = parsed.s;
         }
       } finally {
-        isHydrating = false;
+        if (!shouldPersistMigration) isHydrating = false;
       }
+      if (shouldPersistMigration) saveToLocalStorage();
       return true;
     } catch (e) {
       console.error("[schemaStore] Failed to hydrate from URL data", e);
