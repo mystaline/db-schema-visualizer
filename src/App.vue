@@ -170,9 +170,9 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
     <!-- Global Toast Notifications -->
     <ToastContainer />
 
+    <CreateTableModal />
     <!-- What's New modal, shown on first load or after a version change -->
     <WhatsNewModal :is-open="showWhatsNew" @close="dismissWhatsNew" />
-    <CreateTableModal />
   </div>
 </template>
 
