@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.1.3";
+export const APP_VERSION = "5.1.4";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_vis_version";
@@ -23,6 +23,21 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.1.4",
+    date: "May 28, 2026",
+    badge: "fix",
+    items: [
+      {
+        type: "fix",
+        text: "What's New modal no longer competes with the Create Table prompt — they now appear sequentially instead of simultaneously.",
+      },
+      {
+        type: "fix",
+        text: "Toast notifications now appear above all modals.",
+      },
+    ],
+  },
   {
     version: "5.1.3",
     date: "May 28, 2026",

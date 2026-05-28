@@ -13,12 +13,14 @@ import ToastContainer from "./components/ToastContainer.vue";
 import WhatsNewModal from "./components/WhatsNewModal.vue";
 import CreateTableModal from "./components/CreateTableModal.vue";
 import ReportModal from "./components/ReportModal.vue";
+import { useCreateTableModal } from "./composables/useCreateTableModal";
 
 const schemaStore = useSchemaStore();
 const { undo, redo } = useHistory();
 const { toast } = useToast();
 
 const showWhatsNew = ref(false);
+const { open: openCreateTableModal } = useCreateTableModal();
 const leftCollapsed = ref(false);
 const rightCollapsed = ref(false);
 
@@ -48,6 +50,9 @@ const dismissWhatsNew = () => {
     localStorage.setItem(VERSION_STORAGE_KEY, APP_VERSION);
   } catch (e) {
     console.error("[App] Could not persist version to localStorage", e);
+  }
+  if (schemaStore.tables.length === 0 && schemaStore.viewMode === "full") {
+    openCreateTableModal();
   }
 };
 

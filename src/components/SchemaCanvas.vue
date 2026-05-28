@@ -4,6 +4,7 @@ import { useSchemaStore } from "../stores/schemaStore";
 import { useHistory, isHistoryRestoring } from "../composables/useHistory";
 import { useToast } from "../composables/useToast";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
+import { APP_VERSION, VERSION_STORAGE_KEY } from "../version";
 import TableNode from "./TableNode.vue";
 import RelationLines from "./RelationLines.vue";
 import ConfirmModal from "./ConfirmModal.vue";
@@ -160,9 +161,14 @@ onMounted(async () => {
   window.addEventListener("keydown", handleSpaceDown);
   window.addEventListener("keyup", handleSpaceUp);
   window.addEventListener("blur", resetSpaceState);
+  const whatsNewPending = (() => {
+    try { return localStorage.getItem(VERSION_STORAGE_KEY) !== APP_VERSION; }
+    catch { return false; }
+  })();
   if (
     sessionOk &&
     !isEmbed &&
+    !whatsNewPending &&
     schemaStore.tables.length === 0 &&
     schemaStore.viewMode === "full"
   ) {
