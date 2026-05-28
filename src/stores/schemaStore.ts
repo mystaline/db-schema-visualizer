@@ -79,6 +79,7 @@ export const useSchemaStore = defineStore("schema", () => {
   const activeDrag = ref<{ id: string; x: number; y: number } | null>(null);
   const canvasTransform = ref({ x: 0, y: 0, k: 1 });
   const viewMode = ref<ViewMode>("full");
+  const isEmbed = ref(false);
 
   const selectedTable = computed(() =>
     tables.value.find((t) => t.id === selectedTableId.value),
@@ -1264,6 +1265,7 @@ export const useSchemaStore = defineStore("schema", () => {
     activeDrag,
     canvasTransform,
     viewMode,
+    isEmbed,
     selectedTable,
     restoreSnapshot,
     addTable,

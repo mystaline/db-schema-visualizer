@@ -78,6 +78,8 @@ onMounted(() => {
 
   const isEmbed = new URLSearchParams(window.location.search).has("embed");
   if (isEmbed) {
+    schemaStore.isEmbed = true;
+    schemaStore.viewMode = "read";
     try {
       schemaStore.loadPreset("blog");
     } catch (e) {
@@ -108,6 +110,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
   >
     <!-- Top Bar -->
     <TopBar
+      v-if="!schemaStore.isEmbed"
       class="flex-none h-14 border-b border-secondary-700 bg-secondary-950/90 backdrop-blur-md z-30"
       @open-whats-new="showWhatsNew = true"
     />
