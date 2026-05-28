@@ -9,6 +9,8 @@ import SqlExportModal from "./ExportModal.vue";
 import SqlImportModal from "./ImportModal.vue";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
 import { useImportModal } from "../composables/useImportModal";
+import { useReportModal } from "../composables/useReportModal";
+const { open: openReport } = useReportModal();
 
 const emit = defineEmits(["open-whats-new"]);
 const { open: openCreateTableModal } = useCreateTableModal();
@@ -238,6 +240,18 @@ const openImport = () => {
 
     <!-- Actions -->
     <div class="flex items-center gap-2 lg:gap-4">
+      <!-- Report / Feedback -->
+      <button
+        class="hidden sm:flex items-center justify-center w-8 h-8 lg:w-9 lg:h-9 bg-secondary-900 hover:bg-secondary-800 border border-secondary-700 rounded-lg lg:rounded-xl text-secondary-400 hover:text-danger-400 transition-all active:scale-95"
+        title="Report an issue"
+        @click="openReport"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 21l1.9-5.7a8.5 8.5 0 113.8 3.8L3 21" />
+        </svg>
+      </button>
+
       <!-- Version / What's New Toggle -->
       <button
         class="hidden sm:flex items-center gap-2 px-3 h-8 lg:h-9 bg-secondary-900 hover:bg-secondary-800 border border-secondary-700 rounded-lg lg:rounded-xl text-[10px] font-black font-mono text-secondary-300 hover:text-primary-400 transition-all group active:scale-95"

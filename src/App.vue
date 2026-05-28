@@ -12,6 +12,7 @@ import MobileSelectedTableUI from "./components/MobileSelectedTableUI.vue";
 import ToastContainer from "./components/ToastContainer.vue";
 import WhatsNewModal from "./components/WhatsNewModal.vue";
 import CreateTableModal from "./components/CreateTableModal.vue";
+import ReportModal from "./components/ReportModal.vue";
 
 const schemaStore = useSchemaStore();
 const { undo, redo } = useHistory();
@@ -170,6 +171,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
     <!-- Global Toast Notifications -->
     <ToastContainer />
 
+    <ReportModal />
     <CreateTableModal />
     <!-- What's New modal, shown on first load or after a version change -->
     <WhatsNewModal :is-open="showWhatsNew" @close="dismissWhatsNew" />
