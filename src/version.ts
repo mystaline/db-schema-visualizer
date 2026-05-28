@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.1.5";
+export const APP_VERSION = "5.2.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_viz_version";
@@ -23,6 +23,25 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.2.0",
+    date: "May 29, 2026",
+    badge: "improved",
+    items: [
+      {
+        type: "improvement",
+        text: "What's New now groups all updates from the same day into one section — cleaner to read when several fixes ship at once.",
+      },
+      {
+        type: "improvement",
+        text: "If you were using the old address (schemavis.mystaline.dev), your saved schema is automatically carried over on your first visit to the new app — nothing to export or re-enter.",
+      },
+      {
+        type: "improvement",
+        text: "The old address now redirects to the app on every visit, including the very first one.",
+      },
+    ],
+  },
   {
     version: "5.1.5",
     date: "May 29, 2026",
