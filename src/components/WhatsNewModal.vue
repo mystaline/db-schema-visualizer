@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, toRef, watch } from "vue";
-import { APP_VERSION, CHANGELOG } from "../version";
+import { ref, computed, toRef, watch } from "vue";
+import { APP_VERSION, CHANGELOG, type ChangelogEntry } from "../version";
 import ModalShell from "./ModalShell.vue";
 import { useModalKeyboard } from "../composables/useModalKeyboard";
 
@@ -10,11 +10,31 @@ const emit = defineEmits(["close"]);
 const modalRef = ref<HTMLElement | null>(null);
 const closeBtnRef = ref<HTMLButtonElement | null>(null);
 
-// Accordion — latest version open by default
-const openVersion = ref<string>(CHANGELOG[0].version);
+interface GroupedEntry {
+  date: string;
+  version: string;
+  badge?: ChangelogEntry["badge"];
+  items: ChangelogEntry["items"];
+}
 
-const toggle = (version: string) => {
-  openVersion.value = openVersion.value === version ? "" : version;
+const groupedChangelog = computed<GroupedEntry[]>(() => {
+  const groups: GroupedEntry[] = [];
+  for (const entry of CHANGELOG) {
+    const existing = groups.find((g) => g.date === entry.date);
+    if (existing) {
+      existing.items = [...existing.items, ...entry.items];
+    } else {
+      groups.push({ date: entry.date, version: entry.version, badge: entry.badge, items: [...entry.items] });
+    }
+  }
+  return groups;
+});
+
+// Accordion — latest date open by default
+const openDate = ref<string>(groupedChangelog.value[0]?.date ?? "");
+
+const toggle = (date: string) => {
+  openDate.value = openDate.value === date ? "" : date;
 };
 
 const badgeLabel: Record<string, string> = {
@@ -52,7 +72,7 @@ useModalKeyboard(toRef(props, "isOpen"), {
 
 watch(
   () => props.isOpen,
-  (open) => { if (open) openVersion.value = CHANGELOG[0].version; },
+  (open) => { if (open) openDate.value = groupedChangelog.value[0]?.date ?? ""; },
 );
 </script>
 
@@ -138,11 +158,11 @@ watch(
               class="flex-1 overflow-y-auto custom-scrollbar px-6 pb-6 space-y-2"
             >
               <div
-                v-for="(entry, idx) in CHANGELOG"
-                :key="entry.version"
+                v-for="(entry, idx) in groupedChangelog"
+                :key="entry.date"
                 class="rounded-2xl border overflow-hidden transition-all duration-200"
                 :class="
-                  openVersion === entry.version
+                  openDate === entry.date
                     ? 'border-secondary-600 bg-secondary-800/40 shadow-sm'
                     : 'border-secondary-800 bg-secondary-800/20 hover:border-secondary-700'
                 "
@@ -150,8 +170,8 @@ watch(
                 <!-- Accordion trigger -->
                 <button
                   class="w-full flex items-center justify-between gap-3 px-5 py-4 text-left focus:outline-none"
-                  :aria-expanded="openVersion === entry.version"
-                  @click="toggle(entry.version)"
+                  :aria-expanded="openDate === entry.date"
+                  @click="toggle(entry.date)"
                 >
                   <div class="flex items-center gap-3 min-w-0">
                     <!-- "Latest" dot on the first entry -->
@@ -187,7 +207,7 @@ watch(
                   <!-- Chevron -->
                   <svg
                     class="w-4 h-4 text-secondary-500 shrink-0 transition-transform duration-200"
-                    :class="openVersion === entry.version ? 'rotate-180' : ''"
+                    :class="openDate === entry.date ? 'rotate-180' : ''"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -211,7 +231,7 @@ watch(
                   leave-to-class="opacity-0 max-h-0"
                 >
                   <div
-                    v-if="openVersion === entry.version"
+                    v-if="openDate === entry.date"
                     class="px-5 pb-4 space-y-2 border-t border-secondary-700/50"
                   >
                     <div
@@ -247,7 +267,7 @@ watch(
             >
               <span
                 class="text-xs text-secondary-600 font-mono"
-                >SchemaVis · v{{ APP_VERSION }}</span
+                >SchemaViz · v{{ APP_VERSION }}</span
               >
               <button
                 class="px-8 py-2.5 bg-linear-to-r from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600 text-white text-sm font-bold rounded-xl transition-all active:scale-[0.97] focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-lg shadow-primary-500/20"
