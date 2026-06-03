@@ -2,27 +2,85 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#060810" />
+    <meta name="color-scheme" content="dark light" />
+
+    <title>SchemaViz — PostgreSQL Schema Designer</title>
+    <meta name="description" content="SchemaViz is a free, in-browser PostgreSQL schema designer. Drag tables, draw foreign keys, then export to SQL, Prisma, Drizzle, PNG, or SVG. No signup, fully offline." />
+    <meta name="keywords" content="postgresql schema designer, database ERD, ER diagram, SQL generator, Prisma schema, Drizzle schema, schema visualizer, database design tool" />
+    <meta name="author" content="Priya Bagus Amanullah" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+    <link rel="canonical" href="https://app.schemaviz.mystaline.dev/" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SchemaViz" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SchemaViz" />
+    <meta property="og:title" content="SchemaViz — PostgreSQL Schema Designer" />
+    <meta property="og:description" content="Free, in-browser PostgreSQL schema designer. Drag tables, draw foreign keys, export to SQL, Prisma, Drizzle, PNG, or SVG. No signup, fully offline." />
+    <meta property="og:url" content="https://app.schemaviz.mystaline.dev/" />
+    <meta property="og:image" content="https://schemaviz.mystaline.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SchemaViz — visual PostgreSQL schema designer" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SchemaViz — PostgreSQL Schema Designer" />
+    <meta name="twitter:description" content="Free, in-browser PostgreSQL schema designer. Export to SQL, Prisma, Drizzle, PNG, or SVG. No signup, fully offline." />
+    <meta name="twitter:image" content="https://schemaviz.mystaline.dev/og-image.png" />
+    <meta name="twitter:image:alt" content="SchemaViz — visual PostgreSQL schema designer" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <title>DB Schema Visualizer</title>
-    <meta
-      property="og:image"
-      content="https://schemavis.mystaline.dev/preview.png"
-    />
-    <meta property="og:title" content="DB Schema Visualizer" />
-    <meta
-      property="og:description"
-      content="Visual database designer with ERD export and SQL generation"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "SchemaViz",
+        "alternateName": "SchemaViz — PostgreSQL Schema Designer",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "Database Design",
+        "operatingSystem": "Any (Web Browser)",
+        "url": "https://app.schemaviz.mystaline.dev/",
+        "downloadUrl": "https://app.schemaviz.mystaline.dev/",
+        "description": "SchemaViz is a free, in-browser PostgreSQL schema designer. Drag tables, draw foreign keys, then export to SQL, Prisma, Drizzle, PNG, or SVG.",
+        "browserRequirements": "Requires a modern browser with JavaScript enabled",
+        "softwareVersion": "5.4.0",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "creator": {
+          "@type": "Person",
+          "name": "Priya Bagus Amanullah",
+          "url": "https://github.com/mystaline-dev"
+        },
+        "featureList": [
+          "Drag-and-drop PostgreSQL schema design",
+          "Foreign key relationship editor",
+          "Index and check constraint editor",
+          "SQL DDL export (PostgreSQL, MySQL, SQLite)",
+          "Image export (PNG and SVG)",
+          "Schema sharing via compressed URL",
+          "Works fully offline (PWA)",
+          "Dark and light themes"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
