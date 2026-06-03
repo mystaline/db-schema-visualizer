@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.3.0";
+export const APP_VERSION = "5.4.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_viz_version";
@@ -23,6 +23,29 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.4.0",
+    date: "Jun 4, 2026",
+    badge: "new",
+    items: [
+      {
+        type: "feature",
+        text: "Export the canvas as a PNG (1×, 2×, or 3× scale) or SVG — drop it into a tweet, blog post, or docs.",
+      },
+      {
+        type: "feature",
+        text: "Image exports include a small SCHEMAVIZ mark in the corner linking back to the landing page — clickable in SVG, baked into PNG.",
+      },
+      {
+        type: "improvement",
+        text: "Image background and contrast follow your current dark/light theme; the on-canvas zoom controls are excluded from the capture.",
+      },
+      {
+        type: "improvement",
+        text: "Patched 1 high and 3 moderate dependency vulnerabilities (postcss, js-cookie, brace-expansion, ws) via dependency overrides.",
+      },
+    ],
+  },
   {
     version: "5.3.0",
     date: "Jun 3, 2026",

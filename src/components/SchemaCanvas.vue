@@ -4,6 +4,7 @@ import { useSchemaStore } from "../stores/schemaStore";
 import { useHistory, isHistoryRestoring } from "../composables/useHistory";
 import { useToast } from "../composables/useToast";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
+import { useCanvasContentRef } from "../composables/useCanvasContentRef";
 import { APP_VERSION, VERSION_STORAGE_KEY } from "../version";
 import TableNode from "./TableNode.vue";
 import RelationLines from "./RelationLines.vue";
@@ -15,6 +16,8 @@ const isEmbed = new URLSearchParams(window.location.search).has("embed");
 const isPanning = ref(false);
 const panOffset = ref({ x: 0, y: 0 });
 const canvasContainer = ref<HTMLElement | null>(null);
+const canvasContentRef = ref<HTMLElement | null>(null);
+const { register: registerCanvasContent } = useCanvasContentRef();
 const isSpaceDown = ref(false);
 const isSpacePanning = ref(false);
 
@@ -330,6 +333,8 @@ const canvasStyle = computed(() => ({
   transform: `translate(${transform.value.x}px, ${transform.value.y}px) scale(${transform.value.k})`,
   transformOrigin: "0 0",
 }));
+
+watch(canvasContentRef, (el) => registerCanvasContent(el));
 </script>
 
 <template>
@@ -358,7 +363,7 @@ const canvasStyle = computed(() => ({
     />
 
     <!-- Canvas Transform Layer -->
-    <div class="absolute inset-0 z-10 overflow-visible" :style="canvasStyle">
+    <div ref="canvasContentRef" class="absolute inset-0 z-10 overflow-visible" :style="canvasStyle">
       <!-- SVG Lines for Relations (Behind Tables) -->
       <RelationLines />
 
@@ -412,7 +417,7 @@ const canvasStyle = computed(() => ({
 
     <!-- Canvas HUD Controls -->
     <div
-      class="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto px-1.5 py-1.5 bg-secondary-900/90 backdrop-blur-md shadow-lg border border-secondary-700 rounded-xl flex items-center gap-1 z-40"
+      class="no-export absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto px-1.5 py-1.5 bg-secondary-900/90 backdrop-blur-md shadow-lg border border-secondary-700 rounded-xl flex items-center gap-1 z-40"
       @mousedown.stop
     >
       <button

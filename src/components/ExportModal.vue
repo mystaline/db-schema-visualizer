@@ -4,8 +4,10 @@ import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
 import ModalShell from "./ModalShell.vue";
 import { useModalKeyboard } from "../composables/useModalKeyboard";
-import { buildSchemaSql, hasBrokenRefs, countCrossBoundaryFks, type BuildOptions } from "../utils/sqlExporter";
+import { buildSchemaSql, hasBrokenRefs, countCrossBoundaryFks } from "../utils/sqlExporter";
 import { downloadZip } from "../utils/zipExport";
+import { exportCanvasAsImage, type ImageFormat, type ImageScale } from "../utils/imageExport";
+import { useCanvasContentRef } from "../composables/useCanvasContentRef";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -19,8 +21,41 @@ const { toast } = useToast();
 const modalRef = ref<HTMLElement | null>(null);
 const copyBtnRef = ref<HTMLButtonElement | null>(null);
 
-type ExportTab = "sql" | "json";
+type ExportTab = "sql" | "json" | "image";
 const activeTab = ref<ExportTab>("sql");
+
+// ---- Image Export State ----
+const { canvasContentEl } = useCanvasContentRef();
+const imageFormat = ref<ImageFormat>('png');
+const imageScale = ref<ImageScale>(2);
+const isExportingImage = ref(false);
+
+const imageBgColor = computed(() =>
+  document.documentElement.classList.contains('light') ? '#ffffff' : '#05080c',
+);
+
+const downloadImage = async () => {
+  const node = canvasContentEl.value;
+  if (!node) {
+    toast('Canvas not ready — try again in a moment.', 'error');
+    return;
+  }
+  isExportingImage.value = true;
+  try {
+    await exportCanvasAsImage({
+      format: imageFormat.value,
+      scale: imageFormat.value === 'png' ? imageScale.value : undefined,
+      node,
+      backgroundColor: imageBgColor.value,
+    });
+    toast(`Image downloaded!`);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Image export failed.';
+    toast(msg, 'error');
+  } finally {
+    isExportingImage.value = false;
+  }
+};
 
 // ---- SQL Generation with Mode State ----
 type SqlMode = "all" | "single" | "bundle";
@@ -368,6 +403,33 @@ useModalKeyboard(toRef(props, "isOpen"), {
             JSON
           </span>
         </button>
+        <button
+          id="export-tab-image"
+          class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
+          :class="
+            activeTab === 'image'
+              ? 'text-warning-400 bg-secondary-900 border border-b-0 border-secondary-700'
+              : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
+          "
+          @click="activeTab = 'image'"
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+            Image
+          </span>
+        </button>
       </div>
 
       <!-- Body -->
@@ -627,7 +689,7 @@ useModalKeyboard(toRef(props, "isOpen"), {
         </template>
 
         <!-- JSON tab: single-column layout -->
-        <template v-else>
+        <template v-else-if="activeTab === 'json'">
           <div class="flex-1 relative group">
             <div
               class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 bg-linear-to-r from-primary-500/20 to-info-500/20"
@@ -638,6 +700,58 @@ useModalKeyboard(toRef(props, "isOpen"), {
               aria-label="Generated JSON"
               class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
             />
+          </div>
+        </template>
+
+        <!-- Image tab -->
+        <template v-else-if="activeTab === 'image'">
+          <div class="flex flex-col gap-6 pt-2">
+            <!-- Format selection -->
+            <div class="flex flex-col gap-2">
+              <span class="text-xs font-bold text-secondary-400 uppercase tracking-wider">Format</span>
+              <div class="flex gap-3">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    v-model="imageFormat"
+                    type="radio"
+                    value="png"
+                    class="accent-warning-400 w-4 h-4"
+                  />
+                  <span class="text-sm font-medium text-secondary-200">PNG</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    v-model="imageFormat"
+                    type="radio"
+                    value="svg"
+                    class="accent-warning-400 w-4 h-4"
+                  />
+                  <span class="text-sm font-medium text-secondary-200">SVG</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Scale selection (PNG only) -->
+            <div v-if="imageFormat === 'png'" class="flex flex-col gap-2">
+              <span class="text-xs font-bold text-secondary-400 uppercase tracking-wider">Scale</span>
+              <select
+                v-model="imageScale"
+                class="w-32 bg-secondary-950 border border-secondary-700 rounded-xl px-3 py-2 text-sm text-secondary-200 focus:outline-none focus:border-primary-500/50"
+              >
+                <option :value="1">1× (1x)</option>
+                <option :value="2">2× (2x)</option>
+                <option :value="3">3× (3x)</option>
+              </select>
+            </div>
+
+            <!-- Info note -->
+            <p class="text-xs text-secondary-500 leading-relaxed">
+              Exports the full canvas transform layer — all tables and relation lines visible at current pan/zoom.
+              <!-- TODO: auto-fit-all before capture to ensure all tables are in frame,
+                   then restore original transform. Currently only what's in the canvas
+                   transform layer is captured (tables positioned outside the viewport
+                   at extreme pan offsets will still appear in the image). -->
+            </p>
           </div>
         </template>
       </div>
@@ -723,7 +837,7 @@ useModalKeyboard(toRef(props, "isOpen"), {
         </template>
 
         <!-- JSON tab: two buttons -->
-        <template v-else>
+        <template v-else-if="activeTab === 'json'">
           <button
             ref="copyBtnRef"
             class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-secondary-500 focus:outline-none"
@@ -766,6 +880,35 @@ useModalKeyboard(toRef(props, "isOpen"), {
               />
             </svg>
             Export .JSON
+          </button>
+        </template>
+
+        <!-- Image tab: download button -->
+        <template v-else-if="activeTab === 'image'">
+          <div v-if="schemaStore.tables.length === 0" class="flex-1 flex items-center">
+            <p class="text-xs text-secondary-500">Add at least one table to export.</p>
+          </div>
+          <button
+            :disabled="schemaStore.tables.length === 0 || isExportingImage"
+            class="px-12 font-bold py-4 rounded-xl transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-warning-500 focus:outline-none text-white bg-linear-to-r from-warning-500 to-warning-700 hover:from-warning-400 hover:to-warning-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Download image"
+            @click="downloadImage"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            {{ isExportingImage ? 'Exporting…' : `Download .${imageFormat.toUpperCase()}` }}
           </button>
         </template>
       </div>

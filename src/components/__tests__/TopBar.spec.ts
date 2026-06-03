@@ -16,7 +16,7 @@ describe("TopBar.vue", () => {
       global: { stubs: { Teleport: true } },
     });
     expect(wrapper.text()).toContain("SCHEMA");
-    expect(wrapper.text()).toContain("VIS");
+    expect(wrapper.text()).toContain("VIZ");
   });
 
   it("shows version number", () => {
