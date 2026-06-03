@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.2.0";
+export const APP_VERSION = "5.3.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_viz_version";
@@ -23,6 +23,33 @@ export interface ChangelogEntry {
  * Each entry maps 1-to-1 with a semver release derived from git history.
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "5.3.0",
+    date: "Jun 3, 2026",
+    badge: "new",
+    items: [
+      {
+        type: "feature",
+        text: "Export a single table — pick any entity from the sidebar to preview and download just that table's SQL.",
+      },
+      {
+        type: "feature",
+        text: "Bundle export — select a subset of entities and export them together, with cross-boundary foreign key warnings shown inline.",
+      },
+      {
+        type: "feature",
+        text: "Download as ZIP — bundle mode lets you export each selected table as its own .sql file inside a single zip archive.",
+      },
+      {
+        type: "improvement",
+        text: "Export sidebar shows column, index, and FK counts per entity at a glance.",
+      },
+      {
+        type: "improvement",
+        text: "Select All checkbox in bundle mode matches the entity checkbox style — checkmark for all selected, dash for partial.",
+      },
+    ],
+  },
   {
     version: "5.2.0",
     date: "May 29, 2026",

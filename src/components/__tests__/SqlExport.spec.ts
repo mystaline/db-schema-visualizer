@@ -1,136 +1,78 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { mount } from "@vue/test-utils";
-import { createPinia, setActivePinia } from "pinia";
-import SqlExportModal from "../ExportModal.vue";
-import { useSchemaStore } from "../../stores/schemaStore";
+import { describe, it, expect } from "vitest";
+import { buildSchemaSql } from "../../utils/sqlExporter";
+import type { Table, ForeignKey } from "../../stores/schemaStore";
 
-describe("SqlExportModal.vue (Output Verification)", () => {
-  beforeEach(() => {
-    setActivePinia(createPinia());
-    // Mock URL.createObjectURL for download logic
-    window.URL.createObjectURL = vi.fn();
-    window.URL.revokeObjectURL = vi.fn();
-  });
+const mkTable = (overrides: Partial<Table> = {}): Table => ({
+  id: "t1",
+  name: "users",
+  x: 0,
+  y: 0,
+  columns: [],
+  indexes: [],
+  checkConstraints: [],
+  ...overrides,
+});
 
-  it("generates SQL with named constraints and table notes", async () => {
-    const store = useSchemaStore();
-    
-    // Setup complex table
-    store.addTable("order_items");
-    const tId = store.tables[0].id;
-    store.updateTable(tId, { notes: "Stores items for each order" });
-    
-    // Add columns
-    store.addColumn(tId); // id
-    store.addColumn(tId); // order_id
-    store.addColumn(tId); // product_id
-    
-    const colIds = store.tables[0].columns.map(c => c.id);
-    store.updateColumn(tId, colIds[0], { name: "order_id", isPrimaryKey: false, type: "int" });
-    store.updateColumn(tId, colIds[1], { name: "product_id", isPrimaryKey: true, type: "int" });
-    store.updateColumn(tId, colIds[2], { 
-      name: "quantity", 
-      isPrimaryKey: false, 
-      type: "int", 
-      defaultValue: "1",
-      isNullable: false 
+describe("sqlExporter — high-level scenarios (was SqlExport.spec.ts)", () => {
+  it("generates SQL with table notes, PK, NOT NULL/DEFAULT, named CHECK constraint", () => {
+    const table = mkTable({
+      id: "oi", name: "order_items", notes: "Stores items for each order",
+      columns: [
+        { id: "c1", name: "order_id", type: "int", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+        { id: "c2", name: "product_id", type: "int", isPrimaryKey: true, isNullable: false, isUnique: false, defaultValue: null },
+        { id: "c3", name: "quantity", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: "1" },
+      ],
+      checkConstraints: [{ id: "k1", name: "chk_min_qty", expression: "quantity > 0" }],
     });
 
-    // Add named constraint
-    store.tables[0].checkConstraints.push({
-      id: "c1",
-      name: "chk_min_qty",
-      expression: "quantity > 0"
+    const sql = buildSchemaSql([table], [], {
+      exportSet: new Set(["oi"]),
+      markCrossBoundary: false,
     });
 
-    const wrapper = mount(SqlExportModal, {
-      props: { isOpen: true },
-      global: {
-        stubs: {
-          Teleport: true
-        }
-      }
-    });
-
-    const sql = (wrapper.find("textarea").element as HTMLTextAreaElement).value;
-
-    // Check Table Notes
     expect(sql).toContain("-- Stores items for each order");
-    
-    // Check PK
     expect(sql).toContain("PRIMARY KEY (product_id)");
-    
-    // Check Columns & Defaults (isNullable: false -> NOT NULL)
     expect(sql).toContain("quantity int NOT NULL DEFAULT 1");
-
-    // Check Named Constraint
     expect(sql).toContain("CONSTRAINT chk_min_qty CHECK (quantity > 0)");
   });
 
-  it("generates SQL with complex indexes", async () => {
-    const store = useSchemaStore();
-    store.addTable("users");
-    const tId = store.tables[0].id;
-    store.addColumn(tId);
-    const colId = store.tables[0].columns[0].id;
-    store.updateColumn(tId, colId, { name: "email" });
-
-    store.addIndex(tId, {
-      name: "idx_unique_email",
-      type: "unique",
-      parts: [
-        { type: "column", value: colId, order: "ASC" },
-        { type: "expression", value: "lower(email)", order: "ASC" }
+  it("generates complex unique index with expression part and WHERE filter", () => {
+    const table = mkTable({
+      id: "u", name: "users",
+      columns: [
+        { id: "ec", name: "email", type: "varchar(255)", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null },
       ],
-      filter: "deleted_at IS NULL"
+      indexes: [{
+        id: "i1", name: "idx_unique_email", type: "unique",
+        parts: [
+          { type: "column", value: "ec", order: "ASC" },
+          { type: "expression", value: "lower(email)", order: "ASC" },
+        ],
+        filter: "deleted_at IS NULL",
+      }],
     });
-
-    const wrapper = mount(SqlExportModal, {
-      props: { isOpen: true },
-      global: {
-        stubs: {
-          Teleport: true
-        }
-      }
+    const sql = buildSchemaSql([table], [], {
+      exportSet: new Set(["u"]), markCrossBoundary: false,
     });
-
-    const sql = (wrapper.find("textarea").element as HTMLTextAreaElement).value;
-    
     expect(sql).toContain("CREATE UNIQUE INDEX idx_unique_email ON users (email, lower(email)) WHERE deleted_at IS NULL");
   });
 
-  it("generates SQL for foreign Keys", async () => {
-    const store = useSchemaStore();
-    
-    // Table A: Sites
-    store.addTable("sites");
-    const sId = store.tables[0].id;
-    store.addColumn(sId);
-    const sC1 = store.tables[0].columns[0].id; 
-
-    // Table B: Users
-    store.addTable("users");
-    const uId = store.tables[1].id;
-    store.addColumn(uId);
-    const uC1 = store.tables[1].columns[0].id; 
-
-    store.addForeignKey({
-      sourceTableId: uId,
-      sourceColumnId: uC1,
-      targetTableId: sId,
-      targetColumnId: sC1,
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE"
+  it("generates ALTER TABLE ADD CONSTRAINT for a FK between two tables", () => {
+    const sites = mkTable({ id: "s", name: "sites",
+      columns: [{ id: "sc", name: "id", type: "int", isPrimaryKey: true, isNullable: false, isUnique: true, defaultValue: null }],
     });
-
-    const wrapper = mount(SqlExportModal, {
-      props: { isOpen: true },
-      global: { stubs: { Teleport: true } }
+    const users = mkTable({ id: "u", name: "users",
+      columns: [{ id: "uc", name: "site_id", type: "int", isPrimaryKey: false, isNullable: false, isUnique: false, defaultValue: null }],
     });
-
-    const sql = (wrapper.find("textarea").element as HTMLTextAreaElement).value;
-
+    const fk: ForeignKey = {
+      id: "f", sourceTableId: "u", sourceColumnId: "uc",
+      targetTableId: "s", targetColumnId: "sc",
+      onDelete: "CASCADE", onUpdate: "CASCADE",
+    };
+    const sql = buildSchemaSql([sites, users], [fk], {
+      exportSet: new Set(["s", "u"]), markCrossBoundary: false,
+    });
     expect(sql).toContain("ALTER TABLE users");
-    expect(sql).toContain("FOREIGN KEY (new_column) REFERENCES sites (new_column)");
+    expect(sql).toContain("FOREIGN KEY (site_id) REFERENCES sites (id)");
   });
 });
