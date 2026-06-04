@@ -8,6 +8,8 @@ import { buildSchemaSql, hasBrokenRefs, countCrossBoundaryFks } from "../utils/s
 import { downloadZip } from "../utils/zipExport";
 import { exportCanvasAsImage, type ImageFormat, type ImageScale } from "../utils/imageExport";
 import { useCanvasContentRef } from "../composables/useCanvasContentRef";
+import { buildMermaidEr } from "../utils/exporters/mermaid";
+import { buildDrizzleSchema } from "../utils/exporters/drizzle";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -21,7 +23,7 @@ const { toast } = useToast();
 const modalRef = ref<HTMLElement | null>(null);
 const copyBtnRef = ref<HTMLButtonElement | null>(null);
 
-type ExportTab = "sql" | "json" | "image";
+type ExportTab = "sql" | "json" | "image" | "mermaid" | "drizzle";
 const activeTab = ref<ExportTab>("sql");
 
 // ---- Image Export State ----
@@ -185,19 +187,83 @@ const generatedJson = computed(() => {
   return JSON.stringify(payload, null, 2);
 });
 
-// Active content based on tab
-const activeContent = computed(() =>
-  activeTab.value === "sql" ? generatedSql.value : generatedJson.value,
+// ---- Mermaid Generation ----
+const mermaidResult = computed(() =>
+  buildMermaidEr(schemaStore.tables, schemaStore.foreignKeys),
 );
+const generatedMermaid = computed(() => mermaidResult.value.diagram);
+const mermaidWarnings = computed(() => mermaidResult.value.warnings);
+
+const downloadMermaidFile = () => {
+  try {
+    const blob = new Blob([generatedMermaid.value], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "schema_export.mmd";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    toast("schema_export.mmd downloaded!");
+  } catch (e) {
+    console.error("Mermaid download failed", e);
+    toast("Download failed — try copying the content instead", "error");
+  }
+};
+
+// ---- Drizzle Generation ----
+const drizzleResult = computed((): import("../utils/exporters/drizzle").DrizzleResult => {
+  try {
+    return buildDrizzleSchema(schemaStore.tables, schemaStore.foreignKeys);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return { schema: `// Schema generation failed: ${msg}`, warnings: [`Generation error: ${msg}`] };
+  }
+});
+const generatedDrizzle = computed(() => drizzleResult.value.schema);
+const drizzleWarnings = computed(() => drizzleResult.value.warnings);
+
+const downloadDrizzleFile = () => {
+  try {
+    const blob = new Blob([generatedDrizzle.value], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "schema.ts";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    const warnSuffix = drizzleWarnings.value.length > 0
+      ? ` (${drizzleWarnings.value.length} warning${drizzleWarnings.value.length === 1 ? "" : "s"} — see banner)`
+      : "";
+    toast(`schema.ts downloaded!${warnSuffix}`);
+  } catch (e) {
+    console.error("Drizzle download failed", e);
+    toast("Download failed — try copying the content instead", "error");
+  }
+};
+
+// Active content based on tab
+const activeContent = computed(() => {
+  if (activeTab.value === "sql") return generatedSql.value;
+  if (activeTab.value === "mermaid") return generatedMermaid.value;
+  if (activeTab.value === "drizzle") return generatedDrizzle.value;
+  return generatedJson.value;
+});
 
 const copyToClipboard = async () => {
   try {
     await navigator.clipboard.writeText(activeContent.value);
-    toast(
-      activeTab.value === "sql"
-        ? "SQL copied to clipboard!"
-        : "JSON copied to clipboard!",
-    );
+    const msgs: Record<ExportTab, string> = {
+      sql: "SQL copied to clipboard!",
+      json: "JSON copied to clipboard!",
+      mermaid: "Mermaid ER diagram copied to clipboard!",
+      drizzle: "Drizzle schema copied to clipboard!",
+      image: "Copied!",
+    };
+    toast(msgs[activeTab.value]);
   } catch (err) {
     console.error("Clipboard write failed", err);
     toast("Failed to copy — use Export button to download instead", "error");
@@ -428,6 +494,60 @@ useModalKeyboard(toRef(props, "isOpen"), {
               />
             </svg>
             Image
+          </span>
+        </button>
+        <button
+          id="export-tab-mermaid"
+          class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
+          :class="
+            activeTab === 'mermaid'
+              ? 'text-info-400 bg-secondary-900 border border-b-0 border-secondary-700'
+              : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
+          "
+          @click="activeTab = 'mermaid'"
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+              />
+            </svg>
+            Mermaid
+          </span>
+        </button>
+        <button
+          id="export-tab-drizzle"
+          class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
+          :class="
+            activeTab === 'drizzle'
+              ? 'text-success-400 bg-secondary-900 border border-b-0 border-secondary-700'
+              : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
+          "
+          @click="activeTab = 'drizzle'"
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+              />
+            </svg>
+            Drizzle
           </span>
         </button>
       </div>
@@ -703,6 +823,88 @@ useModalKeyboard(toRef(props, "isOpen"), {
           </div>
         </template>
 
+        <!-- Drizzle tab -->
+        <template v-else-if="activeTab === 'drizzle'">
+          <div
+            v-if="drizzleWarnings.length > 0"
+            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+          >
+            <svg
+              class="w-4 h-4 shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <p class="text-[11px] font-bold mb-1">
+                {{ drizzleWarnings.length }} item{{ drizzleWarnings.length === 1 ? '' : 's' }} skipped or adjusted:
+              </p>
+              <ul class="text-[11px] font-medium leading-relaxed list-disc list-inside space-y-0.5">
+                <li v-for="w in drizzleWarnings" :key="w">{{ w }}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="flex-1 relative group">
+            <div
+              class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 bg-linear-to-r from-success-500/20 to-primary-500/20"
+            />
+            <textarea
+              :value="generatedDrizzle"
+              readonly
+              aria-label="Generated Drizzle Schema"
+              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-success-500/50 resize-none leading-relaxed selection:bg-success-500/30 custom-scrollbar"
+            />
+          </div>
+        </template>
+
+        <!-- Mermaid tab: single-column with warnings -->
+        <template v-else-if="activeTab === 'mermaid'">
+          <div
+            v-if="mermaidWarnings.length > 0"
+            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+          >
+            <svg
+              class="w-4 h-4 shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <p class="text-[11px] font-bold mb-1">
+                {{ mermaidWarnings.length }} item{{ mermaidWarnings.length === 1 ? '' : 's' }} not fully supported — dropped or skipped:
+              </p>
+              <ul class="text-[11px] font-medium leading-relaxed list-disc list-inside space-y-0.5">
+                <li v-for="w in mermaidWarnings" :key="w">{{ w }}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="flex-1 relative group">
+            <div
+              class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 bg-linear-to-r from-info-500/20 to-primary-500/20"
+            />
+            <textarea
+              :value="generatedMermaid"
+              readonly
+              aria-label="Generated Mermaid ER Diagram"
+              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-info-500/50 resize-none leading-relaxed selection:bg-info-500/30 custom-scrollbar"
+            />
+          </div>
+        </template>
+
         <!-- Image tab -->
         <template v-else-if="activeTab === 'image'">
           <div class="flex flex-col gap-6 pt-2">
@@ -880,6 +1082,100 @@ useModalKeyboard(toRef(props, "isOpen"), {
               />
             </svg>
             Export .JSON
+          </button>
+        </template>
+
+        <!-- Drizzle tab: copy + download -->
+        <template v-else-if="activeTab === 'drizzle'">
+          <button
+            ref="copyBtnRef"
+            class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-secondary-500 focus:outline-none"
+            aria-label="Copy to clipboard"
+            @click="copyToClipboard"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5 opacity-70"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+              />
+            </svg>
+            Copy Schema
+          </button>
+          <button
+            class="px-12 font-bold py-4 rounded-xl transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-success-500 focus:outline-none text-white bg-linear-to-r from-success-500 to-success-700 hover:from-success-400 hover:to-success-600"
+            aria-label="Download Drizzle schema file"
+            @click="downloadDrizzleFile"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Download schema.ts
+          </button>
+        </template>
+
+        <!-- Mermaid tab: copy + download -->
+        <template v-else-if="activeTab === 'mermaid'">
+          <button
+            ref="copyBtnRef"
+            class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-secondary-500 focus:outline-none"
+            aria-label="Copy to clipboard"
+            @click="copyToClipboard"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5 opacity-70"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+              />
+            </svg>
+            Copy Diagram
+          </button>
+          <button
+            class="px-12 font-bold py-4 rounded-xl transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-info-500 focus:outline-none text-white bg-linear-to-r from-info-500 to-info-700 hover:from-info-400 hover:to-info-600"
+            aria-label="Download Mermaid file"
+            @click="downloadMermaidFile"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Download .MMD
           </button>
         </template>
 

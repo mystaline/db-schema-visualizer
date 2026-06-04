@@ -1,6 +1,6 @@
 {
   "name": "db-schema-visualizer",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:all": "vitest run && playwright test"
+    "test:all": "vitest run && playwright test",
+    "generate-pwa-assets": "pwa-assets-generator --config pwa-assets.config.ts"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -25,6 +26,7 @@
     "@eslint/js": "^9.0.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
+    "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
