@@ -255,6 +255,13 @@ export function buildDrizzleSchema(tables: Table[], foreignKeys: ForeignKey[]): 
         continue;
       }
 
+      // Single-column uniqueIndex is redundant when the column already carries .unique()
+      if (idx.type === "unique" && idxCols.length === 1) {
+        const colId = (idx.parts ?? []).find((p) => p.type === "column")?.value;
+        const c = table.columns.find((x) => x.id === colId);
+        if (c?.isUnique && !c.isPrimaryKey) continue;
+      }
+
       needsArrayCallback = true;
       const idxHelper = idx.type === "unique" ? "uniqueIndex" : "index";
       pgCoreImports.add(idxHelper);

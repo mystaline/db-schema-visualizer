@@ -325,6 +325,25 @@ describe("buildDrizzleSchema", () => {
     expect(schema).toContain('uniqueIndex("idx_slug").on(table.slug)');
   });
 
+  it("suppresses single-column uniqueIndex when column already has .unique()", () => {
+    const t = mkTable({
+      columns: [col("c1", "email", "text", { isUnique: true })],
+      indexes: [{ id: "i1", name: "unq_email", type: "unique", parts: [{ type: "column", value: "c1" }] }],
+    });
+    const { schema } = buildDrizzleSchema([t], []);
+    expect(schema).toContain(".unique()");           // field-level .unique() stays
+    expect(schema).not.toContain('uniqueIndex(');    // table-level uniqueIndex suppressed
+  });
+
+  it("keeps uniqueIndex for multi-column unique index even if one column has .unique()", () => {
+    const t = mkTable({
+      columns: [col("c1", "a", "text", { isUnique: true }), col("c2", "b", "text")],
+      indexes: [{ id: "i1", name: "unq_ab", type: "unique", parts: [{ type: "column", value: "c1" }, { type: "column", value: "c2" }] }],
+    });
+    const { schema } = buildDrizzleSchema([t], []);
+    expect(schema).toContain('uniqueIndex("unq_ab")');
+  });
+
   it("emits .where(sql`...`) for partial indexes", () => {
     const t = mkTable({
       columns: [col("c1", "status", "text")],

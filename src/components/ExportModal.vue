@@ -10,6 +10,7 @@ import { exportCanvasAsImage, type ImageFormat, type ImageScale } from "../utils
 import { useCanvasContentRef } from "../composables/useCanvasContentRef";
 import { buildMermaidEr } from "../utils/exporters/mermaid";
 import { buildDrizzleSchema } from "../utils/exporters/drizzle";
+import { buildPrismaSchema } from "../utils/exporters/prisma";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -23,7 +24,7 @@ const { toast } = useToast();
 const modalRef = ref<HTMLElement | null>(null);
 const copyBtnRef = ref<HTMLButtonElement | null>(null);
 
-type ExportTab = "sql" | "json" | "image" | "mermaid" | "drizzle";
+type ExportTab = "sql" | "json" | "image" | "mermaid" | "drizzle" | "prisma";
 const activeTab = ref<ExportTab>("sql");
 
 // ---- Image Export State ----
@@ -245,11 +246,45 @@ const downloadDrizzleFile = () => {
   }
 };
 
+// ---- Prisma Generation ----
+const prismaResult = computed((): import("../utils/exporters/prisma").PrismaResult => {
+  try {
+    return buildPrismaSchema(schemaStore.tables, schemaStore.foreignKeys);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    return { schema: `// Schema generation failed: ${msg}`, warnings: [`Generation error: ${msg}`] };
+  }
+});
+const generatedPrisma = computed(() => prismaResult.value.schema);
+const prismaWarnings = computed(() => prismaResult.value.warnings);
+
+const downloadPrismaFile = () => {
+  try {
+    const blob = new Blob([generatedPrisma.value], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "schema.prisma";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    const warnSuffix = prismaWarnings.value.length > 0
+      ? ` (${prismaWarnings.value.length} warning${prismaWarnings.value.length === 1 ? "" : "s"} — see banner)`
+      : "";
+    toast(`schema.prisma downloaded!${warnSuffix}`);
+  } catch (e) {
+    console.error("Prisma download failed", e);
+    toast("Download failed — try copying the content instead", "error");
+  }
+};
+
 // Active content based on tab
 const activeContent = computed(() => {
   if (activeTab.value === "sql") return generatedSql.value;
   if (activeTab.value === "mermaid") return generatedMermaid.value;
   if (activeTab.value === "drizzle") return generatedDrizzle.value;
+  if (activeTab.value === "prisma") return generatedPrisma.value;
   return generatedJson.value;
 });
 
@@ -261,6 +296,7 @@ const copyToClipboard = async () => {
       json: "JSON copied to clipboard!",
       mermaid: "Mermaid ER diagram copied to clipboard!",
       drizzle: "Drizzle schema copied to clipboard!",
+      prisma: "Prisma schema copied to clipboard!",
       image: "Copied!",
     };
     toast(msgs[activeTab.value]);
@@ -548,6 +584,33 @@ useModalKeyboard(toRef(props, "isOpen"), {
               />
             </svg>
             Drizzle
+          </span>
+        </button>
+        <button
+          id="export-tab-prisma"
+          class="relative px-5 py-2.5 text-xs font-bold uppercase tracking-widest rounded-t-xl transition-all focus:outline-none"
+          :class="
+            activeTab === 'prisma'
+              ? 'text-primary-400 bg-secondary-900 border border-b-0 border-secondary-700'
+              : 'text-secondary-500 hover:text-secondary-300 border border-transparent'
+          "
+          @click="activeTab = 'prisma'"
+        >
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
+            </svg>
+            Prisma
           </span>
         </button>
       </div>
@@ -905,6 +968,47 @@ useModalKeyboard(toRef(props, "isOpen"), {
           </div>
         </template>
 
+        <!-- Prisma tab -->
+        <template v-else-if="activeTab === 'prisma'">
+          <div
+            v-if="prismaWarnings.length > 0"
+            class="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 shrink-0"
+          >
+            <svg
+              class="w-4 h-4 shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <p class="text-[11px] font-bold mb-1">
+                {{ prismaWarnings.length }} item{{ prismaWarnings.length === 1 ? '' : 's' }} skipped or adjusted:
+              </p>
+              <ul class="text-[11px] font-medium leading-relaxed list-disc list-inside space-y-0.5">
+                <li v-for="w in prismaWarnings" :key="w">{{ w }}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="flex-1 relative group">
+            <div
+              class="absolute -inset-1 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 bg-linear-to-r from-primary-500/20 to-info-500/20"
+            />
+            <textarea
+              :value="generatedPrisma"
+              readonly
+              aria-label="Generated Prisma Schema"
+              class="relative w-full h-full bg-secondary-950 border border-secondary-800 rounded-2xl p-6 text-sm font-mono text-secondary-300 focus:outline-none focus:border-primary-500/50 resize-none leading-relaxed selection:bg-primary-500/30 custom-scrollbar"
+            />
+          </div>
+        </template>
+
         <!-- Image tab -->
         <template v-else-if="activeTab === 'image'">
           <div class="flex flex-col gap-6 pt-2">
@@ -1176,6 +1280,53 @@ useModalKeyboard(toRef(props, "isOpen"), {
               />
             </svg>
             Download .MMD
+          </button>
+        </template>
+
+        <!-- Prisma tab: copy + download -->
+        <template v-else-if="activeTab === 'prisma'">
+          <button
+            ref="copyBtnRef"
+            class="flex-1 bg-secondary-800 hover:bg-secondary-700 text-secondary-50 font-bold py-4 rounded-xl transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-secondary-500 focus:outline-none"
+            aria-label="Copy to clipboard"
+            @click="copyToClipboard"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5 opacity-70"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+              />
+            </svg>
+            Copy Schema
+          </button>
+          <button
+            class="px-12 font-bold py-4 rounded-xl transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3 focus:ring-2 focus:ring-primary-500 focus:outline-none text-white bg-linear-to-r from-primary-500 to-primary-700 hover:from-primary-400 hover:to-primary-600"
+            aria-label="Download Prisma schema file"
+            @click="downloadPrismaFile"
+          >
+            <svg
+              aria-hidden="true"
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Download schema.prisma
           </button>
         </template>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pgTypeToMermaid } from "../pgTypeMap";
+import { pgTypeToMermaid, pgTypeToPrisma } from "../pgTypeMap";
 
 describe("pgTypeToMermaid", () => {
   it("maps integer variants to int", () => {
@@ -81,5 +81,141 @@ describe("pgTypeToMermaid", () => {
   it("returns 'unknown' for empty string input", () => {
     expect(pgTypeToMermaid("")).toBe("unknown");
     expect(pgTypeToMermaid("   ")).toBe("unknown");
+  });
+});
+
+describe("pgTypeToPrisma", () => {
+  it("maps integer variants to Int", () => {
+    expect(pgTypeToPrisma("integer").scalar).toBe("Int");
+    expect(pgTypeToPrisma("int").scalar).toBe("Int");
+    expect(pgTypeToPrisma("int4").scalar).toBe("Int");
+  });
+
+  it("maps smallint to Int with @db.SmallInt", () => {
+    const r = pgTypeToPrisma("smallint");
+    expect(r.scalar).toBe("Int");
+    expect(r.nativeType).toBe("@db.SmallInt");
+  });
+
+  it("maps bigint to BigInt", () => {
+    expect(pgTypeToPrisma("bigint").scalar).toBe("BigInt");
+    expect(pgTypeToPrisma("int8").scalar).toBe("BigInt");
+  });
+
+  it("maps serial to Int with isSerial flag", () => {
+    const r = pgTypeToPrisma("serial");
+    expect(r.scalar).toBe("Int");
+    expect(r.isSerial).toBe(true);
+  });
+
+  it("maps bigserial to BigInt with isSerial flag", () => {
+    const r = pgTypeToPrisma("bigserial");
+    expect(r.scalar).toBe("BigInt");
+    expect(r.isSerial).toBe(true);
+  });
+
+  it("maps text to String", () => {
+    expect(pgTypeToPrisma("text").scalar).toBe("String");
+    expect(pgTypeToPrisma("text").nativeType).toBeUndefined();
+  });
+
+  it("maps varchar(n) to String with @db.VarChar(n)", () => {
+    const r = pgTypeToPrisma("varchar(255)");
+    expect(r.scalar).toBe("String");
+    expect(r.nativeType).toBe("@db.VarChar(255)");
+  });
+
+  it("maps varchar without length to String", () => {
+    const r = pgTypeToPrisma("varchar");
+    expect(r.scalar).toBe("String");
+    expect(r.nativeType).toBeUndefined();
+  });
+
+  it("maps char(n) to String with @db.Char(n)", () => {
+    const r = pgTypeToPrisma("char(10)");
+    expect(r.scalar).toBe("String");
+    expect(r.nativeType).toBe("@db.Char(10)");
+  });
+
+  it("maps boolean to Boolean", () => {
+    expect(pgTypeToPrisma("boolean").scalar).toBe("Boolean");
+    expect(pgTypeToPrisma("bool").scalar).toBe("Boolean");
+  });
+
+  it("maps uuid to String with @db.Uuid", () => {
+    const r = pgTypeToPrisma("uuid");
+    expect(r.scalar).toBe("String");
+    expect(r.nativeType).toBe("@db.Uuid");
+  });
+
+  it("maps timestamp to DateTime with @db.Timestamp(6)", () => {
+    const r = pgTypeToPrisma("timestamp");
+    expect(r.scalar).toBe("DateTime");
+    expect(r.nativeType).toBe("@db.Timestamp(6)");
+  });
+
+  it("maps timestamptz to DateTime with @db.Timestamptz(6)", () => {
+    const r = pgTypeToPrisma("timestamptz");
+    expect(r.scalar).toBe("DateTime");
+    expect(r.nativeType).toBe("@db.Timestamptz(6)");
+  });
+
+  it("maps date to DateTime with @db.Date", () => {
+    const r = pgTypeToPrisma("date");
+    expect(r.scalar).toBe("DateTime");
+    expect(r.nativeType).toBe("@db.Date");
+  });
+
+  it("maps time to DateTime with @db.Time(6)", () => {
+    const r = pgTypeToPrisma("time");
+    expect(r.scalar).toBe("DateTime");
+    expect(r.nativeType).toBe("@db.Time(6)");
+  });
+
+  it("maps json and jsonb to Json", () => {
+    expect(pgTypeToPrisma("json").scalar).toBe("Json");
+    expect(pgTypeToPrisma("jsonb").scalar).toBe("Json");
+  });
+
+  it("maps numeric(p,s) to Decimal with @db.Decimal(p, s)", () => {
+    const r = pgTypeToPrisma("numeric(10, 2)");
+    expect(r.scalar).toBe("Decimal");
+    expect(r.nativeType).toBe("@db.Decimal(10, 2)");
+  });
+
+  it("maps numeric without params to Decimal", () => {
+    expect(pgTypeToPrisma("numeric").scalar).toBe("Decimal");
+    expect(pgTypeToPrisma("numeric").nativeType).toBeUndefined();
+  });
+
+  it("maps real to Float with @db.Real", () => {
+    const r = pgTypeToPrisma("real");
+    expect(r.scalar).toBe("Float");
+    expect(r.nativeType).toBe("@db.Real");
+  });
+
+  it("maps double precision to Float", () => {
+    expect(pgTypeToPrisma("double precision").scalar).toBe("Float");
+    expect(pgTypeToPrisma("double precision").nativeType).toBeUndefined();
+  });
+
+  it("maps bytea to Bytes", () => {
+    expect(pgTypeToPrisma("bytea").scalar).toBe("Bytes");
+  });
+
+  it("maps unknown types to Unsupported with isUnsupported flag", () => {
+    const r = pgTypeToPrisma("cidr");
+    expect(r.scalar).toBe('Unsupported("cidr")');
+    expect(r.isUnsupported).toBe(true);
+  });
+
+  it("maps empty string to Unsupported with isUnsupported flag", () => {
+    const r = pgTypeToPrisma("");
+    expect(r.isUnsupported).toBe(true);
+  });
+
+  it("known types do not set isUnsupported", () => {
+    expect(pgTypeToPrisma("integer").isUnsupported).toBeUndefined();
+    expect(pgTypeToPrisma("text").isUnsupported).toBeUndefined();
   });
 });

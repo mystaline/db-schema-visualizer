@@ -3,7 +3,7 @@
  * The What's New modal fires automatically when a user's stored
  * version does not match this constant.
  */
-export const APP_VERSION = "5.4.0";
+export const APP_VERSION = "5.6.0";
 
 /** localStorage key used to persist the last-seen version. */
 export const VERSION_STORAGE_KEY = "schema_viz_version";
@@ -24,16 +24,28 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "5.4.0",
+    version: "5.6.0",
     date: "Jun 4, 2026",
     badge: "new",
     items: [
       {
         type: "feature",
-        text: "Export the canvas as a PNG (1×, 2×, or 3× scale) or SVG — drop it into a tweet, blog post, or docs.",
+        text: "Export as Prisma schema — generates a ready-to-use schema.prisma with models, relations, native type annotations (@db.*), and dbgenerated() for complex defaults.",
       },
       {
         type: "feature",
+        text: "Export as Drizzle ORM schema — generates a TypeScript schema.ts with pgTable, column helpers, .references(), indexes, and check constraints.",
+      },
+      {
+        type: "feature",
+        text: "Export as Mermaid ER diagram — generates an erDiagram block you can embed directly in GitHub READMEs, Notion, or any Markdown renderer.",
+      },
+      {
+        type: "feature",
+        text: "Export the canvas as a PNG (1×, 2×, or 3× scale) or SVG — drop it into a tweet, blog post, or docs.",
+      },
+      {
+        type: "improvement",
         text: "Image exports include a small SCHEMAVIZ mark in the corner linking back to the landing page — clickable in SVG, baked into PNG.",
       },
       {
@@ -42,7 +54,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       },
       {
         type: "improvement",
-        text: "Patched 1 high and 3 moderate dependency vulnerabilities (postcss, js-cookie, brace-expansion, ws) via dependency overrides.",
+        text: "App is now installable as a PWA with a full icon set (192px, 512px, maskable, Apple touch icon, favicon).",
       },
     ],
   },
