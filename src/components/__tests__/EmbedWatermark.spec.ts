@@ -27,7 +27,9 @@ describe("EmbedWatermark.vue", () => {
     const store = useSchemaStore();
     store.isEmbed = true;
     const wrapper = mount(EmbedWatermark);
-    expect(wrapper.find("a").attributes("href")).toBe("https://schemaviz.mystaline.dev");
+    expect(wrapper.find("a").attributes("href")).toBe(
+      "https://schemaviz.mystaline.dev",
+    );
   });
 
   it("watermark link opens in new tab", () => {

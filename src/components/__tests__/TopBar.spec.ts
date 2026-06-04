@@ -44,13 +44,17 @@ describe("TopBar.vue", () => {
     expect(wrapper.find("[aria-label='Redo']").exists()).toBe(true);
   });
 
-  it("shows preset buttons in full mode", () => {
+  it("shows preset dropdown trigger in full mode", async () => {
     const wrapper = mount(TopBar, {
       global: { stubs: { Teleport: true } },
     });
     expect(wrapper.text()).toContain("Presets");
+    // Open the dropdown then check preset labels are rendered
+    const trigger = wrapper.findAll("button").find((b) => b.text().includes("Presets"));
+    await trigger?.trigger("click");
     expect(wrapper.text()).toContain("Blog");
     expect(wrapper.text()).toContain("Shop");
+    expect(wrapper.text()).toContain("SaaS");
   });
 
   it("toggles dark mode", async () => {

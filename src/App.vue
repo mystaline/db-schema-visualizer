@@ -71,7 +71,9 @@ const migrateStorageKeys = () => {
         localStorage.setItem(newKey, val);
         localStorage.removeItem(oldKey);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 };
 
@@ -88,7 +90,10 @@ onMounted(() => {
       schemaStore.selectedTableId = schemaStore.tables[0]?.id ?? null;
     } catch (e) {
       console.error("[App] Failed to load embed preset", e);
-      toast("Failed to load the embedded schema. The canvas is empty.", "error");
+      toast(
+        "Failed to load the embedded schema. The canvas is empty.",
+        "error",
+      );
     }
     return;
   }
@@ -101,7 +106,10 @@ onMounted(() => {
       }, 400);
     }
   } catch (e) {
-    console.warn("[App] localStorage unavailable — What's New modal suppressed", e);
+    console.warn(
+      "[App] localStorage unavailable — What's New modal suppressed",
+      e,
+    );
   }
 });
 

@@ -10,11 +10,16 @@ import SqlImportModal from "./ImportModal.vue";
 import { useCreateTableModal } from "../composables/useCreateTableModal";
 import { useImportModal } from "../composables/useImportModal";
 import { useReportModal } from "../composables/useReportModal";
+import { PRESET_REGISTRY, type PresetKey } from "../utils/presets/index";
 const { open: openReport } = useReportModal();
 
 const emit = defineEmits(["open-whats-new"]);
 const { open: openCreateTableModal } = useCreateTableModal();
-const { isImportOpen, openImport: _openImportModal, closeImport } = useImportModal();
+const {
+  isImportOpen,
+  openImport: _openImportModal,
+  closeImport,
+} = useImportModal();
 const schemaStore = useSchemaStore();
 const { toast } = useToast();
 const { isDark, toggleTheme } = useTheme();
@@ -25,8 +30,19 @@ const isMobileMenuOpen = ref(false);
 const shareMenuRef = ref<HTMLElement | null>(null);
 
 // Two-click preset confirmation
-const pendingPreset = ref<"blog" | "ecommerce" | null>(null);
+const pendingPreset = ref<PresetKey | null>(null);
 let presetTimer: ReturnType<typeof setTimeout> | null = null;
+const presetDropdownOpen = ref(false);
+const presetDropdownRef = ref<HTMLElement | null>(null);
+
+const closePresetDropdown = (e: MouseEvent) => {
+  if (
+    presetDropdownRef.value &&
+    !presetDropdownRef.value.contains(e.target as Node)
+  ) {
+    presetDropdownOpen.value = false;
+  }
+};
 
 const handleShare = async (permission: "full" | "read") => {
   showShareMenu.value = false;
@@ -49,7 +65,10 @@ const handleShare = async (permission: "full" | "read") => {
     toast(`${label} link copied to clipboard!`);
   } catch {
     window.location.hash = `data=${base64}`;
-    toast("Clipboard unavailable — share URL set in address bar. Copy it manually.", "error");
+    toast(
+      "Clipboard unavailable — share URL set in address bar. Copy it manually.",
+      "error",
+    );
   }
 };
 
@@ -59,13 +78,17 @@ const closeShareMenu = (e: MouseEvent) => {
   }
 };
 
-onMounted(() => document.addEventListener("mousedown", closeShareMenu));
+onMounted(() => {
+  document.addEventListener("mousedown", closeShareMenu);
+  document.addEventListener("mousedown", closePresetDropdown);
+});
 onUnmounted(() => {
   document.removeEventListener("mousedown", closeShareMenu);
+  document.removeEventListener("mousedown", closePresetDropdown);
   if (presetTimer) clearTimeout(presetTimer);
 });
 
-const loadPreset = (type: "blog" | "ecommerce") => {
+const loadPreset = (type: PresetKey) => {
   if (pendingPreset.value === type) {
     // Second click — confirmed
     if (presetTimer) clearTimeout(presetTimer);
@@ -82,7 +105,7 @@ const loadPreset = (type: "blog" | "ecommerce") => {
   }, 3000);
 };
 
-const executePreset = (type: "blog" | "ecommerce") => {
+const executePreset = (type: PresetKey) => {
   const prevTables = JSON.parse(JSON.stringify(schemaStore.tables));
   const prevFKs = JSON.parse(JSON.stringify(schemaStore.foreignKeys));
   const prevTransform = { ...schemaStore.canvasTransform };
@@ -93,12 +116,26 @@ const executePreset = (type: "blog" | "ecommerce") => {
   } catch (e) {
     console.error("[TopBar] Preset load failed", e);
     try {
-      schemaStore.restoreSnapshot(prevTables, prevFKs, prevTransform, prevSelected);
+      schemaStore.restoreSnapshot(
+        prevTables,
+        prevFKs,
+        prevTransform,
+        prevSelected,
+      );
       clearHistory();
-      toast("Could not load preset — your previous schema has been restored.", "error");
+      toast(
+        "Could not load preset — your previous schema has been restored.",
+        "error",
+      );
     } catch (restoreErr) {
-      console.error("[TopBar] Schema restore after preset failure also failed", restoreErr);
-      toast("Could not load preset and schema restore failed — please refresh the page.", "error");
+      console.error(
+        "[TopBar] Schema restore after preset failure also failed",
+        restoreErr,
+      );
+      toast(
+        "Could not load preset and schema restore failed — please refresh the page.",
+        "error",
+      );
     }
   }
 };
@@ -160,32 +197,58 @@ const openImport = () => {
         v-if="schemaStore.viewMode === 'full' || schemaStore.isEmbed"
         class="hidden lg:flex items-center gap-3"
       >
-        <span
-          class="text-[10px] font-bold text-secondary-400 uppercase tracking-widest"
-          >Presets:</span
-        >
-        <button
-          class="text-xs font-bold transition-all uppercase tracking-tight px-3 py-1.5 rounded-lg border"
-          :class="
-            pendingPreset === 'blog'
-              ? 'bg-warning-500/20 border-warning-500/50 text-warning-400 animate-pulse'
-              : 'text-secondary-400 hover:text-primary-400 border-transparent hover:bg-secondary-800'
-          "
-          @click="loadPreset('blog')"
-        >
-          {{ pendingPreset === "blog" ? "Confirm?" : "Blog" }}
-        </button>
-        <button
-          class="text-xs font-bold transition-all uppercase tracking-tight px-3 py-1.5 rounded-lg border"
-          :class="
-            pendingPreset === 'ecommerce'
-              ? 'bg-warning-500/20 border-warning-500/50 text-warning-400 animate-pulse'
-              : 'text-secondary-400 hover:text-primary-400 border-transparent hover:bg-secondary-800'
-          "
-          @click="loadPreset('ecommerce')"
-        >
-          {{ pendingPreset === "ecommerce" ? "Confirm?" : "Shop" }}
-        </button>
+        <div ref="presetDropdownRef" class="relative">
+          <button
+            class="flex items-center gap-1.5 text-xs font-bold transition-all uppercase tracking-tight px-3 py-1.5 rounded-lg border"
+            :class="
+              presetDropdownOpen
+                ? 'text-primary-400 border-primary-500/40 bg-secondary-800'
+                : 'text-secondary-400 border-transparent hover:text-primary-400 hover:bg-secondary-800'
+            "
+            @click="presetDropdownOpen = !presetDropdownOpen"
+          >
+            <span
+              class="text-[10px] font-bold text-secondary-400 uppercase tracking-widest"
+              >Presets</span
+            >
+            <svg
+              class="w-3 h-3 transition-transform"
+              :class="presetDropdownOpen ? 'rotate-180' : ''"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          <div
+            v-if="presetDropdownOpen"
+            class="absolute top-full mt-1.5 left-0 z-50 bg-secondary-900 border border-secondary-700 rounded-xl shadow-2xl py-1.5 min-w-[170px]"
+          >
+            <button
+              v-for="preset in PRESET_REGISTRY"
+              :key="preset.key"
+              class="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold uppercase tracking-tight transition-all"
+              :class="
+                pendingPreset === preset.key
+                  ? 'bg-warning-500/20 text-warning-400 animate-pulse'
+                  : 'text-secondary-300 hover:text-primary-400 hover:bg-secondary-800'
+              "
+              @click="loadPreset(preset.key)"
+            >
+              <span>{{ preset.emoji }}</span>
+              <span>{{
+                pendingPreset === preset.key ? "Confirm?" : preset.label
+              }}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="hidden sm:block w-px h-5 bg-secondary-700 mx-1" />
@@ -247,9 +310,18 @@ const openImport = () => {
         title="Report an issue"
         @click="openReport"
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M3 21l1.9-5.7a8.5 8.5 0 113.8 3.8L3 21" />
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 21l1.9-5.7a8.5 8.5 0 113.8 3.8L3 21"
+          />
         </svg>
       </button>
 
@@ -627,28 +699,22 @@ const openImport = () => {
                 class="text-[11px] font-black text-secondary-600 uppercase tracking-[0.2em] block"
                 >System Presets</span
               >
-              <div class="grid grid-cols-2 gap-4">
+              <div class="grid grid-cols-3 gap-3">
                 <button
-                  class="flex flex-col gap-3 p-5 bg-secondary-900 border-2 rounded-3xl text-xs font-bold uppercase transition-all shadow-xl"
+                  v-for="preset in PRESET_REGISTRY"
+                  :key="preset.key"
+                  class="flex flex-col items-center gap-2 p-4 bg-secondary-900 border-2 rounded-2xl text-xs font-bold uppercase transition-all shadow-xl"
                   :class="
-                    pendingPreset === 'blog'
+                    pendingPreset === preset.key
                       ? 'border-warning-400 text-warning-400'
                       : 'border-secondary-800 text-secondary-300'
                   "
-                  @click="loadPreset('blog')"
+                  @click="loadPreset(preset.key)"
                 >
-                  ✍️ {{ pendingPreset === "blog" ? "Confirm?" : "Blog" }}
-                </button>
-                <button
-                  class="flex flex-col gap-3 p-5 bg-secondary-900 border-2 rounded-3xl text-xs font-bold uppercase transition-all shadow-xl"
-                  :class="
-                    pendingPreset === 'ecommerce'
-                      ? 'border-warning-400 text-warning-400'
-                      : 'border-secondary-800 text-secondary-300'
-                  "
-                  @click="loadPreset('ecommerce')"
-                >
-                  🛍️ {{ pendingPreset === "ecommerce" ? "Confirm?" : "E-Com" }}
+                  <span class="text-lg">{{ preset.emoji }}</span>
+                  <span>{{
+                    pendingPreset === preset.key ? "Confirm?" : preset.label
+                  }}</span>
                 </button>
               </div>
             </div>
