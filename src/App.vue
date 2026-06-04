@@ -13,7 +13,9 @@ import ToastContainer from "./components/ToastContainer.vue";
 import WhatsNewModal from "./components/WhatsNewModal.vue";
 import CreateTableModal from "./components/CreateTableModal.vue";
 import ReportModal from "./components/ReportModal.vue";
+import EmbedWatermark from "./components/EmbedWatermark.vue";
 import { useCreateTableModal } from "./composables/useCreateTableModal";
+import { detectEmbedMode } from "./composables/useEmbedMode";
 
 const schemaStore = useSchemaStore();
 const { undo, redo } = useHistory();
@@ -77,7 +79,7 @@ onMounted(() => {
   migrateStorageKeys();
   document.addEventListener("keydown", onKeyDown);
 
-  const isEmbed = new URLSearchParams(window.location.search).has("embed");
+  const isEmbed = detectEmbedMode();
   if (isEmbed) {
     schemaStore.isEmbed = true;
     schemaStore.viewMode = "read";
@@ -202,6 +204,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKeyDown));
     <CreateTableModal />
     <!-- What's New modal, shown on first load or after a version change -->
     <WhatsNewModal :is-open="showWhatsNew" @close="dismissWhatsNew" />
+    <EmbedWatermark />
   </div>
 </template>
 

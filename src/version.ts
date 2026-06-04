@@ -46,14 +46,6 @@ export const CHANGELOG: ChangelogEntry[] = [
       },
       {
         type: "improvement",
-        text: "Image exports include a small SCHEMAVIZ mark in the corner linking back to the landing page — clickable in SVG, baked into PNG.",
-      },
-      {
-        type: "improvement",
-        text: "Image background and contrast follow your current dark/light theme; the on-canvas zoom controls are excluded from the capture.",
-      },
-      {
-        type: "improvement",
         text: "App is now installable as a PWA with a full icon set (192px, 512px, maskable, Apple touch icon, favicon).",
       },
     ],
