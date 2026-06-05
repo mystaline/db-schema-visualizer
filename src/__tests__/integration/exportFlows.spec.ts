@@ -76,7 +76,7 @@ describe("SQL export — single table", () => {
       store.foreignKeys,
       allOpts(store),
     );
-    expect(sql).toContain("CREATE TABLE posts");
+    expect(sql).toContain(`CREATE TABLE "posts"`);
   });
 
   it("NOT NULL column appears in CREATE TABLE", () => {
@@ -102,9 +102,9 @@ describe("SQL export — single table", () => {
       store.foreignKeys,
       allOpts(store),
     );
-    expect(sql).toContain("ALTER TABLE posts");
+    expect(sql).toContain(`ALTER TABLE "posts"`);
     expect(sql).toContain("FOREIGN KEY");
-    expect(sql).toContain("REFERENCES users");
+    expect(sql).toContain(`REFERENCES "users"`);
   });
 
   it("cross-boundary FK warning emitted when target not in exportSet", () => {
@@ -138,8 +138,8 @@ describe("SQL export — multi-table bundle", () => {
     const store = makeStore();
     buildBlogSchema(store);
     const sql = buildSchemaSql(store.tables, store.foreignKeys, allOpts(store));
-    expect(sql).toContain("CREATE TABLE users");
-    expect(sql).toContain("CREATE TABLE posts");
+    expect(sql).toContain(`CREATE TABLE "users"`);
+    expect(sql).toContain(`CREATE TABLE "posts"`);
   });
 
   it("omits a table not in exportSet", () => {
@@ -151,7 +151,7 @@ describe("SQL export — multi-table bundle", () => {
       markCrossBoundary: false,
     });
     expect(sql).not.toContain("CREATE TABLE users");
-    expect(sql).toContain("CREATE TABLE posts");
+    expect(sql).toContain(`CREATE TABLE "posts"`);
   });
 
   it("index with no parts is skipped in bundle SQL", () => {

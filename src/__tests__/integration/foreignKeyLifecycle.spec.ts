@@ -273,7 +273,7 @@ describe("FK in exports", () => {
       exportSet: new Set(store.tables.map((t) => t.id)),
       markCrossBoundary: false,
     });
-    expect(sql).toContain("REFERENCES users");
+    expect(sql).toContain(`REFERENCES "users"`);
   });
 
   it("FK between tables in different export bundles shows cross-bundle warning", () => {

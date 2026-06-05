@@ -60,13 +60,13 @@ describe("Table creation", () => {
     expect(store.tables.map((t) => t.name)).toEqual(["users", "users_1"]);
   });
 
-  it("table name with special characters is sanitised in SQL export", () => {
+  it("table name with special characters is quoted in SQL export", () => {
     const store = makeStore();
     const t = addTable(store, "my-table");
     const col = addCol(store, t.id);
     store.updateColumn(t.id, col.id, { isPrimaryKey: true });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("CREATE TABLE my-table");
+    expect(sql).toContain(`CREATE TABLE "my-table"`);
   });
 
   it("deleting a table removes it from the store", () => {
@@ -135,7 +135,7 @@ describe("Column lifecycle", () => {
       isNullable: false,
     });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("start_time TIMESTAMPTZ NOT NULL");
+    expect(sql).toContain(`"start_time" TIMESTAMPTZ NOT NULL`);
   });
 
   it("column with isUnique=true renders UNIQUE in SQL export", () => {
@@ -148,7 +148,7 @@ describe("Column lifecycle", () => {
       isUnique: true,
     });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("email TEXT UNIQUE");
+    expect(sql).toContain(`"email" TEXT UNIQUE`);
   });
 
   it("column defaultValue is included in SQL export CREATE TABLE", () => {
@@ -170,7 +170,7 @@ describe("Column lifecycle", () => {
     const col = addCol(store, t.id);
     store.updateColumn(t.id, col.id, { name: "id", isPrimaryKey: true });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("PRIMARY KEY (id)");
+    expect(sql).toContain(`PRIMARY KEY ("id")`);
   });
 
   it("editing a column name updates index expression references", () => {
@@ -239,7 +239,7 @@ describe("Column lifecycle", () => {
     const col = addCol(store, t.id);
     store.updateColumn(t.id, col.id, { name: "payload", type: "JSONB" });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("payload JSONB");
+    expect(sql).toContain(`"payload" JSONB`);
   });
 
   it("duplicate column name within a table gets auto-suffixed", () => {
@@ -270,7 +270,7 @@ describe("Index lifecycle", () => {
       filter: "",
     });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("CREATE INDEX idx_orders_status ON orders (status)");
+    expect(sql).toContain(`CREATE INDEX "idx_orders_status" ON "orders" ("status")`);
   });
 
   it("adding a unique index appears in SQL export as CREATE UNIQUE INDEX", () => {
@@ -286,7 +286,7 @@ describe("Index lifecycle", () => {
     });
     const sql = tableSql(store, t.id);
     expect(sql).toContain(
-      "CREATE UNIQUE INDEX idx_users_email ON users (email)",
+      `CREATE UNIQUE INDEX "idx_users_email" ON "users" ("email")`,
     );
   });
 
@@ -339,7 +339,7 @@ describe("Index lifecycle", () => {
       filter: "",
     });
     const sql = tableSql(store, t.id);
-    expect(sql).toContain("(user_id, created_at DESC)");
+    expect(sql).toContain(`("user_id", "created_at" DESC)`);
   });
 
   it("deleting an index removes it from the table", () => {

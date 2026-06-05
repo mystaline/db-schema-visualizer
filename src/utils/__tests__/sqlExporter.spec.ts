@@ -31,11 +31,11 @@ describe("buildTableSql", () => {
       exportSet: new Set(["t1"]),
       markCrossBoundary: false,
     });
-    expect(sql).toContain("CREATE TABLE users (");
-    expect(sql).toContain("id uuid NOT NULL UNIQUE DEFAULT gen_random_uuid()");
-    expect(sql).toContain("email varchar(255) NOT NULL UNIQUE");
-    expect(sql).toContain("bio text");
-    expect(sql).toContain("PRIMARY KEY (id)");
+    expect(sql).toContain(`CREATE TABLE "users" (`);
+    expect(sql).toContain(`"id" uuid NOT NULL UNIQUE DEFAULT gen_random_uuid()`);
+    expect(sql).toContain(`"email" varchar(255) NOT NULL UNIQUE`);
+    expect(sql).toContain(`"bio" text`);
+    expect(sql).toContain(`PRIMARY KEY ("id")`);
   });
 
   it("emits table notes as -- comments above CREATE TABLE", () => {
@@ -87,9 +87,9 @@ describe("buildTableSql", () => {
       exportSet: new Set(["u", "p"]),
       markCrossBoundary: true,
     });
-    expect(sql).toContain("ALTER TABLE posts");
-    expect(sql).toContain("ADD CONSTRAINT fk_posts_author_id");
-    expect(sql).toContain("FOREIGN KEY (author_id) REFERENCES users (id)");
+    expect(sql).toContain(`ALTER TABLE "posts"`);
+    expect(sql).toContain(`ADD CONSTRAINT "fk_posts_author_id"`);
+    expect(sql).toContain(`FOREIGN KEY ("author_id") REFERENCES "users" ("id")`);
     expect(sql).toContain("ON DELETE CASCADE ON UPDATE CASCADE");
     expect(sql).not.toContain("-- WARNING: cross-boundary");
   });
@@ -114,7 +114,7 @@ describe("buildTableSql", () => {
       markCrossBoundary: true,
     });
     expect(sql).toContain("-- WARNING: cross-boundary foreign key — references users not in this selection");
-    expect(sql).toContain("ALTER TABLE posts"); // still emitted
+    expect(sql).toContain(`ALTER TABLE "posts"`); // still emitted
   });
 
   it("does NOT add cross-boundary warning when markCrossBoundary=false", () => {
@@ -180,7 +180,7 @@ describe("buildTableSql", () => {
     const sql = buildTableSql(table, [table], [], {
       exportSet: new Set(["t1"]), markCrossBoundary: false,
     });
-    expect(sql).toContain("CREATE UNIQUE INDEX idx_users_lower_email ON users (email, lower(email)) WHERE deleted_at IS NULL");
+    expect(sql).toContain(`CREATE UNIQUE INDEX "idx_users_lower_email" ON "users" ("email", lower(email)) WHERE deleted_at IS NULL`);
   });
 
   it("emits DESC suffix on column index part", () => {
@@ -198,7 +198,36 @@ describe("buildTableSql", () => {
     const sql = buildTableSql(table, [table], [], {
       exportSet: new Set(["t1"]), markCrossBoundary: false,
     });
-    expect(sql).toContain("CREATE INDEX idx_users_created_desc ON users (created_at DESC)");
+    expect(sql).toContain(`CREATE INDEX "idx_users_created_desc" ON "users" ("created_at" DESC)`);
+  });
+
+  it("double-quotes reserved words and special-char names", () => {
+    const table = mkTable({
+      id: "t1",
+      name: "order",
+      columns: [
+        { id: "c1", name: "user", type: "int", isPrimaryKey: true, isNullable: false, isUnique: false, defaultValue: null },
+        { id: "c2", name: "my-col", type: "text", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+      ],
+    });
+    const sql = buildTableSql(table, [table], [], {
+      exportSet: new Set(["t1"]), markCrossBoundary: false,
+    });
+    expect(sql).toContain(`CREATE TABLE "order" (`);
+    expect(sql).toContain(`"user" int`);
+    expect(sql).toContain(`"my-col" text`);
+    expect(sql).toContain(`PRIMARY KEY ("user")`);
+  });
+
+  it('escapes double-quote characters inside identifier names', () => {
+    const table = mkTable({ name: 'my"table', columns: [
+      { id: "c1", name: 'col"name', type: "int", isPrimaryKey: false, isNullable: true, isUnique: false, defaultValue: null },
+    ]});
+    const sql = buildTableSql(table, [table], [], {
+      exportSet: new Set(["t1"]), markCrossBoundary: false,
+    });
+    expect(sql).toContain(`CREATE TABLE "my""table" (`);
+    expect(sql).toContain(`"col""name" int`);
   });
 
   it("emits broken-index WARNING when all parts reference deleted columns", () => {
@@ -238,8 +267,8 @@ describe("buildSchemaSql", () => {
     const sql = buildSchemaSql([a, b], [], {
       exportSet: new Set(["a"]), markCrossBoundary: true,
     });
-    expect(sql).toContain("CREATE TABLE alpha");
-    expect(sql).not.toContain("CREATE TABLE beta");
+    expect(sql).toContain(`CREATE TABLE "alpha"`);
+    expect(sql).not.toContain(`CREATE TABLE "beta"`);
   });
 
   it("joins multiple tables with a blank line between them", () => {
@@ -252,7 +281,7 @@ describe("buildSchemaSql", () => {
     const sql = buildSchemaSql([a, b], [], {
       exportSet: new Set(["a", "b"]), markCrossBoundary: false,
     });
-    expect(sql.indexOf("CREATE TABLE alpha")).toBeLessThan(sql.indexOf("CREATE TABLE beta"));
+    expect(sql.indexOf(`CREATE TABLE "alpha"`)).toBeLessThan(sql.indexOf(`CREATE TABLE "beta"`));
   });
 });
 

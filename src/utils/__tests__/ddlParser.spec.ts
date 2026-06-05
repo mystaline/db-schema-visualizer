@@ -110,6 +110,46 @@ describe("ddlParser (Enhanced Robustness)", () => {
     expect(fk.onDelete).toBe("CASCADE");
   });
 
+  it("preserves quoted string defaults with spaces", () => {
+    const sql = `CREATE TABLE greetings (
+      msg TEXT DEFAULT 'hello world' NOT NULL,
+      tag TEXT DEFAULT 'foo'
+    );`;
+    const result = parseDDL(sql);
+    const cols = result.tables[0].columns;
+    expect(cols[0].defaultValue).toBe("'hello world'");
+    expect(cols[1].defaultValue).toBe("'foo'");
+  });
+
+  it("preserves function call defaults with spaces in arguments", () => {
+    const sql = `CREATE TABLE seqs (
+      val TEXT DEFAULT nextval('my seq') NOT NULL
+    );`;
+    const result = parseDDL(sql);
+    expect(result.tables[0].columns[0].defaultValue).toBe("nextval('my seq')");
+  });
+
+  it("preserves single-quoted defaults with escaped quotes", () => {
+    const sql = `CREATE TABLE people (
+      name TEXT DEFAULT 'O''Brien'
+    );`;
+    const result = parseDDL(sql);
+    expect(result.tables[0].columns[0].defaultValue).toBe("'O''Brien'");
+  });
+
+  it("preserves simple defaults: number, boolean, keyword", () => {
+    const sql = `CREATE TABLE cfg (
+      count INT DEFAULT 0,
+      flag BOOLEAN DEFAULT true,
+      ts TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );`;
+    const result = parseDDL(sql);
+    const cols = result.tables[0].columns;
+    expect(cols[0].defaultValue).toBe("0");
+    expect(cols[1].defaultValue).toBe("true");
+    expect(cols[2].defaultValue).toBe("CURRENT_TIMESTAMP");
+  });
+
   it("parses indexes with expressions and order", () => {
     const sql = `
       CREATE TABLE users (id INT PRIMARY KEY, email VARCHAR);

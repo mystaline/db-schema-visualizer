@@ -269,9 +269,45 @@ function splitByTopLevelComma(str: string): string[] {
 }
 
 function parseDefault(constraints: string): string | null {
-  const match = constraints.match(/DEFAULT\s+([^, ]+)/i);
-  if (match) return match[1];
-  return null;
+  const kwMatch = constraints.match(/DEFAULT\s+/i);
+  if (!kwMatch) return null;
+  const s = constraints.slice(kwMatch.index! + kwMatch[0].length);
+  if (!s) return null;
+
+  let i = 0;
+
+  if (s[0] === "'") {
+    // Single-quoted string — read until closing quote, handling '' escapes
+    i = 1;
+    while (i < s.length) {
+      if (s[i] === "'") {
+        if (s[i + 1] === "'") { i += 2; } // escaped quote
+        else { i++; break; }
+      } else { i++; }
+    }
+  } else {
+    // Unquoted token: track paren depth and embedded strings, stop at
+    // whitespace or comma only when at depth 0 and outside a string
+    let depth = 0;
+    let inStr = false;
+    while (i < s.length) {
+      const c = s[i];
+      if (inStr) {
+        if (c === "'" && s[i + 1] === "'") { i += 2; } // '' escape — stay in string
+        else if (c === "'") { inStr = false; i++; }
+        else { i++; }
+      } else {
+        if (c === "'") { inStr = true; i++; }
+        else if (c === "(") { depth++; i++; }
+        else if (c === ")") { if (depth === 0) break; depth--; i++; }
+        else if (depth === 0 && (c === "," || c === " " || c === "\t" || c === "\n" || c === "\r")) break;
+        else { i++; }
+      }
+    }
+  }
+
+  const result = s.slice(0, i);
+  return result || null;
 }
 
 function parseAction(suffix: string, type: "DELETE" | "UPDATE"): "CASCADE" | "SET NULL" | "RESTRICT" | "NO ACTION" {

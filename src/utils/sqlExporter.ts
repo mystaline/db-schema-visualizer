@@ -1,5 +1,7 @@
 import type { Table, ForeignKey } from "../stores/schemaStore";
 
+const q = (name: string): string => `"${name.replace(/"/g, '""')}"`;
+
 export interface BuildOptions {
   /** Set of table ids that are part of this export. */
   exportSet: Set<string>;
@@ -37,18 +39,18 @@ export function buildTableSql(
       });
   }
 
-  sql += `CREATE TABLE ${table.name} (\n`;
+  sql += `CREATE TABLE ${q(table.name)} (\n`;
   const lines: string[] = [];
 
   table.columns.forEach((col) => {
-    let line = `  ${col.name} ${col.type}`;
+    let line = `  ${q(col.name)} ${col.type}`;
     if (!col.isNullable) line += " NOT NULL";
     if (col.isUnique) line += " UNIQUE";
     if (col.defaultValue) line += ` DEFAULT ${col.defaultValue}`;
     lines.push(line);
   });
 
-  const pks = table.columns.filter((c) => c.isPrimaryKey).map((c) => c.name);
+  const pks = table.columns.filter((c) => c.isPrimaryKey).map((c) => q(c.name));
   if (pks.length > 0) {
     lines.push(`  PRIMARY KEY (${pks.join(", ")})`);
   }
@@ -63,9 +65,7 @@ export function buildTableSql(
   sql += `\n);`;
 
   // Foreign Keys where this table is the source
-  const tableFKs = allForeignKeys.filter(
-    (fk) => fk.sourceTableId === table.id,
-  );
+  const tableFKs = allForeignKeys.filter((fk) => fk.sourceTableId === table.id);
 
   tableFKs.forEach((fk) => {
     const targetTable = allTables.find((t) => t.id === fk.targetTableId);
@@ -85,9 +85,9 @@ export function buildTableSql(
     if (!targetInSet && opts.markCrossBoundary) {
       sql += `\n\n-- WARNING: cross-boundary foreign key — references ${targetTable.name} not in this selection`;
     }
-    sql += `\n\nALTER TABLE ${table.name}\n`;
-    sql += `  ADD CONSTRAINT fk_${table.name}_${sourceCol.name}\n`;
-    sql += `  FOREIGN KEY (${sourceCol.name}) REFERENCES ${targetTable.name} (${targetCol.name})\n`;
+    sql += `\n\nALTER TABLE ${q(table.name)}\n`;
+    sql += `  ADD CONSTRAINT ${q(`fk_${table.name}_${sourceCol.name}`)}\n`;
+    sql += `  FOREIGN KEY (${q(sourceCol.name)}) REFERENCES ${q(targetTable.name)} (${q(targetCol.name)})\n`;
     sql += `  ON DELETE ${fk.onDelete} ON UPDATE ${fk.onUpdate};`;
   });
 
@@ -100,7 +100,9 @@ export function buildTableSql(
       if (part.type === "column") {
         const column = table.columns.find((c) => c.id === part.value);
         if (column) {
-          parts.push(part.order === "DESC" ? `${column.name} DESC` : column.name);
+          parts.push(
+            part.order === "DESC" ? `${q(column.name)} DESC` : q(column.name),
+          );
         } else {
           brokenParts.push(`column:${part.value}`);
         }
@@ -123,7 +125,7 @@ export function buildTableSql(
       if (brokenParts.length > 0) {
         sql += `\n-- WARNING: index ${idx.name} on ${table.name} has ${brokenParts.length} broken part(s): ${brokenParts.join(", ")}`;
       }
-      sql += `\n\nCREATE${uniqueStr} INDEX ${idx.name} ON ${table.name} (${parts.join(", ")})${whereStr};`;
+      sql += `\n\nCREATE${uniqueStr} INDEX ${q(idx.name)} ON ${q(table.name)} (${parts.join(", ")})${whereStr};`;
     } else if ((idx.parts ?? []).length > 0) {
       sql += `\n-- WARNING: index ${idx.name} on ${table.name} was skipped (all column/expression references are broken: ${brokenParts.join(", ")})`;
     }

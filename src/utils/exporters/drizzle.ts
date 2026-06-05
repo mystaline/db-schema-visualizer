@@ -77,7 +77,7 @@ function formatDefault(value: string): { expr: string; needsSql: boolean } {
   if (/^(true|false)$/i.test(v)) return { expr: v.toLowerCase(), needsSql: false };
   const strMatch = v.match(/^'(.*)'$/s);
   if (strMatch) return { expr: JSON.stringify(strMatch[1]), needsSql: false };
-  const escaped = v.replace(/`/g, "\\`");
+  const escaped = v.replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
   return { expr: `sql\`${escaped}\``, needsSql: true };
 }
 

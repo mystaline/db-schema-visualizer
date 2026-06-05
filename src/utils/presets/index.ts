@@ -1083,6 +1083,8 @@ function buildRbac(): PresetData {
   const rolePkId = uuid();
   const permId = uuid();
   const permPkId = uuid();
+  const permActionId = uuid();
+  const permResourceId = uuid();
   const urId = uuid();
   const rpId = uuid();
   const urUserId = uuid();
@@ -1200,7 +1202,7 @@ function buildRbac(): PresetData {
         defaultValue: null,
       },
       {
-        id: uuid(),
+        id: permActionId,
         name: "action",
         type: "varchar(50)",
         isPrimaryKey: false,
@@ -1209,7 +1211,7 @@ function buildRbac(): PresetData {
         defaultValue: null,
       },
       {
-        id: uuid(),
+        id: permResourceId,
         name: "resource",
         type: "varchar(50)",
         isPrimaryKey: false,
@@ -1224,8 +1226,8 @@ function buildRbac(): PresetData {
         name: "uq_permissions_action_resource",
         type: "unique",
         parts: [
-          { type: "column", value: "", order: "ASC" },
-          { type: "column", value: "", order: "ASC" },
+          { type: "column", value: permActionId, order: "ASC" },
+          { type: "column", value: permResourceId, order: "ASC" },
         ],
         filter: "",
       },
@@ -1970,6 +1972,7 @@ function buildChat(): PresetData {
   const roomCreatorId = uuid();
   const msgRoomId = uuid();
   const msgSenderId = uuid();
+  const msgSentAtId = uuid();
   const partRoomId = uuid();
   const partUserId = uuid();
   const reactMsgId = uuid();
@@ -2159,7 +2162,7 @@ function buildChat(): PresetData {
         defaultValue: null,
       },
       {
-        id: uuid(),
+        id: msgSentAtId,
         name: "sent_at",
         type: "timestamptz",
         isPrimaryKey: false,
@@ -2184,7 +2187,7 @@ function buildChat(): PresetData {
         type: "normal",
         parts: [
           { type: "column", value: msgRoomId, order: "ASC" },
-          { type: "column", value: "", order: "DESC" },
+          { type: "column", value: msgSentAtId, order: "DESC" },
         ],
         filter: "",
       },

@@ -5,7 +5,7 @@ import { useModalKeyboard } from "../composables/useModalKeyboard";
 import { useToast } from "../composables/useToast";
 import ModalShell from "./ModalShell.vue";
 
-const WORKER_URL = import.meta.env.VITE_REPORT_WORKER_URL as string;
+const WORKER_URL = import.meta.env.VITE_MAIL_WORKER_URL as string;
 const COOLDOWN_KEY = "schema_viz_last_report";
 const COOLDOWN_SECONDS = 86400;
 

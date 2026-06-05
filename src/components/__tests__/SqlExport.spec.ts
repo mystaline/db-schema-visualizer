@@ -31,8 +31,8 @@ describe("sqlExporter — high-level scenarios (was SqlExport.spec.ts)", () => {
     });
 
     expect(sql).toContain("-- Stores items for each order");
-    expect(sql).toContain("PRIMARY KEY (product_id)");
-    expect(sql).toContain("quantity int NOT NULL DEFAULT 1");
+    expect(sql).toContain(`PRIMARY KEY ("product_id")`);
+    expect(sql).toContain(`"quantity" int NOT NULL DEFAULT 1`);
     expect(sql).toContain("CONSTRAINT chk_min_qty CHECK (quantity > 0)");
   });
 
@@ -54,7 +54,7 @@ describe("sqlExporter — high-level scenarios (was SqlExport.spec.ts)", () => {
     const sql = buildSchemaSql([table], [], {
       exportSet: new Set(["u"]), markCrossBoundary: false,
     });
-    expect(sql).toContain("CREATE UNIQUE INDEX idx_unique_email ON users (email, lower(email)) WHERE deleted_at IS NULL");
+    expect(sql).toContain(`CREATE UNIQUE INDEX "idx_unique_email" ON "users" ("email", lower(email)) WHERE deleted_at IS NULL`);
   });
 
   it("generates ALTER TABLE ADD CONSTRAINT for a FK between two tables", () => {
@@ -72,7 +72,7 @@ describe("sqlExporter — high-level scenarios (was SqlExport.spec.ts)", () => {
     const sql = buildSchemaSql([sites, users], [fk], {
       exportSet: new Set(["s", "u"]), markCrossBoundary: false,
     });
-    expect(sql).toContain("ALTER TABLE users");
-    expect(sql).toContain("FOREIGN KEY (site_id) REFERENCES sites (id)");
+    expect(sql).toContain(`ALTER TABLE "users"`);
+    expect(sql).toContain(`FOREIGN KEY ("site_id") REFERENCES "sites" ("id")`);
   });
 });

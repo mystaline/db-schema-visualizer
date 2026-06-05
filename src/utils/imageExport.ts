@@ -172,9 +172,10 @@ export async function exportCanvasAsImage(opts: ExportCanvasOptions): Promise<vo
     });
     try {
       dataUrl = await watermarkPng(dataUrl, scale, backgroundColor);
-    } catch {
+    } catch (e) {
       // Watermark is non-critical — if it fails (e.g. CORS-tainted canvas in some
       // browser), ship the plain image rather than breaking the export.
+      console.warn('[imageExport] PNG watermark failed, exporting without watermark', e);
     }
   } else {
     dataUrl = await htmlToImage.toSvg(node, {
@@ -183,7 +184,11 @@ export async function exportCanvasAsImage(opts: ExportCanvasOptions): Promise<vo
       filter: noExportFilter,
       cacheBust: true,
     });
-    dataUrl = watermarkSvg(dataUrl, backgroundColor);
+    try {
+      dataUrl = watermarkSvg(dataUrl, backgroundColor);
+    } catch (e) {
+      console.warn('[imageExport] SVG watermark failed, exporting without watermark', e);
+    }
   }
 
   const a = document.createElement('a');
@@ -192,5 +197,4 @@ export async function exportCanvasAsImage(opts: ExportCanvasOptions): Promise<vo
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => {}, 100);
 }

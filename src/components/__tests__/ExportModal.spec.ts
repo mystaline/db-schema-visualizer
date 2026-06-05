@@ -43,8 +43,8 @@ describe("ExportModal.vue", () => {
     });
 
     const sql = (wrapper.find("textarea").element as HTMLTextAreaElement).value;
-    expect(sql).toContain("CREATE TABLE users");
-    expect(sql).toContain("PRIMARY KEY (id)");
+    expect(sql).toContain(`CREATE TABLE "users"`);
+    expect(sql).toContain(`PRIMARY KEY ("id")`);
   });
 
   it("generates JSON output on JSON tab", async () => {
@@ -123,8 +123,8 @@ describe("ExportModal.vue", () => {
     const alphaId = store.tables[0].id;
     await wrapper.find(`[data-testid="sidebar-row-entity-${alphaId}"]`).trigger("click");
     const sql = (wrapper.find("textarea").element as HTMLTextAreaElement).value;
-    expect(sql).toContain("CREATE TABLE alpha");
-    expect(sql).not.toContain("CREATE TABLE beta");
+    expect(sql).toContain(`CREATE TABLE "alpha"`);
+    expect(sql).not.toContain(`CREATE TABLE "beta"`);
   });
 
   it("entering bundle mode shows checkboxes with all entities pre-checked", async () => {

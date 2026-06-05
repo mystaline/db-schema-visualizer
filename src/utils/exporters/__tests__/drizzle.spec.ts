@@ -506,6 +506,13 @@ describe("buildDrizzleSchema", () => {
     expect(schema).toContain("sql`some\\`thing\\`here`");
   });
 
+  it("escapes ${} sequences in SQL expression defaults to prevent template literal injection", () => {
+    const t = mkTable({ columns: [col("c1", "val", "text", { defaultValue: "${process.env.SECRET}" })] });
+    const { schema } = buildDrizzleSchema([t], []);
+    expect(schema).toContain("sql`\\${process.env.SECRET}`");
+    expect(schema).not.toContain("sql`${process.env.SECRET}`");
+  });
+
   // Issue 7: cycle warning names tables
   it("cycle warning includes the names of tables involved", () => {
     const a = mkTable({ id: "t1", name: "alpha", columns: [col("c1", "id", "integer"), col("c2", "beta_id", "integer")] });

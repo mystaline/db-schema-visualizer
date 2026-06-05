@@ -55,6 +55,29 @@ describe("buildPreset", () => {
         expect(new Set(colIds).size).toBe(colIds.length);
       });
 
+      it("all index parts reference existing columns (no blank ids)", () => {
+        const { tables } = buildPreset(key);
+        const colById = new Map(
+          tables.flatMap((t) => t.columns.map((c) => [c.id, c])),
+        );
+        for (const table of tables) {
+          for (const idx of table.indexes ?? []) {
+            for (const part of idx.parts ?? []) {
+              if (part.type === "column") {
+                expect(
+                  part.value.length,
+                  `index "${idx.name}" on "${table.name}" has a blank column id`,
+                ).toBeGreaterThan(0);
+                expect(
+                  colById.has(part.value),
+                  `index "${idx.name}" on "${table.name}" references unknown column id "${part.value}"`,
+                ).toBe(true);
+              }
+            }
+          }
+        }
+      });
+
       it("all foreign key references point to existing tables and columns", () => {
         const { tables, foreignKeys } = buildPreset(key);
         const tableIds = new Set(tables.map((t) => t.id));
