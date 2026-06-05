@@ -45,6 +45,10 @@ export const CHANGELOG: ChangelogEntry[] = [
         text: "Export the canvas as a PNG (1×, 2×, or 3× scale) or SVG — drop it into a tweet, blog post, or docs.",
       },
       {
+        type: "feature",
+        text: "Presets dropdown — 7 built-in schema presets now live in a single top-bar dropdown, replacing the old flat preset buttons.",
+      },
+      {
         type: "improvement",
         text: "App is now installable as a PWA with a full icon set (192px, 512px, maskable, Apple touch icon, favicon).",
       },
