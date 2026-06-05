@@ -54,3 +54,7 @@ pnpm preview
 ## License
 
 MIT — see [LICENSE](LICENSE)
+---
+
+**[→ mystaline.dev](https://mystaline.dev)** — full portfolio & project writeups
+
