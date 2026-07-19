@@ -1,9 +1,15 @@
 import { ref, computed, watch } from "vue";
 import { defineStore } from "pinia";
 import { parseDDL } from "../utils/ddlParser";
+import {
+  foldMigrationHistory,
+  type MigrationFile,
+  type VersionDelta,
+} from "../utils/migrationFold";
 import { uuid } from "../utils/uuid";
 import { buildPreset, type PresetKey } from "../utils/presets/index";
 import { useToast } from "../composables/useToast";
+import { getIndexName, getConstraintName } from "../utils/naming";
 
 export interface Column {
   id: string;
@@ -73,6 +79,13 @@ const getUniqueName = (base: string, others: string[]) => {
   return name;
 };
 
+/** Deep-clones a snapshot so `importedBaseline` is independent of subsequent live edits. */
+const cloneSnapshot = (
+  tables: Table[],
+  foreignKeys: ForeignKey[],
+): { tables: Table[]; foreignKeys: ForeignKey[] } =>
+  JSON.parse(JSON.stringify({ tables, foreignKeys }));
+
 export const useSchemaStore = defineStore("schema", () => {
   const tables = ref<Table[]>([]);
   const foreignKeys = ref<ForeignKey[]>([]);
@@ -82,35 +95,18 @@ export const useSchemaStore = defineStore("schema", () => {
   const viewMode = ref<ViewMode>("full");
   const isEmbed = ref(false);
 
+  // Retained "as imported" snapshot, captured once whenever any import action
+  // (SQL/JSON/migration-history) completes. Immutable after that point — the
+  // live `tables`/`foreignKeys` refs go on mutating normally as the user edits.
+  // Not diffed against anything yet; kept so a future feature (hand the delta
+  // between this baseline and the live canvas back to a migration tool) won't
+  // need to re-plumb the import path.
+  const importedBaseline = ref<{ tables: Table[]; foreignKeys: ForeignKey[] } | null>(null);
+  const importedHistory = ref<VersionDelta[]>([]);
+
   const selectedTable = computed(() =>
     tables.value.find((t) => t.id === selectedTableId.value),
   );
-
-  // Helper to generate a standardized index name
-  const getIndexName = (
-    table: Table,
-    index: Omit<TableIndex, "id" | "name">,
-  ) => {
-    const names = index.parts
-      .map((p) => {
-        if (p.type === "column") {
-          return table.columns.find((col) => col.id === p.value)?.name;
-        }
-        return p.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 10);
-      })
-      .filter(Boolean);
-
-    const prefix = index.type === "unique" ? "unq" : "idx";
-    return `${prefix}_${table.name}_${names.join("_")}`;
-  };
-
-  const getConstraintName = (table: Table, expression: string) => {
-    const snippet = expression
-      .replace(/[^a-zA-Z0-9_]/g, "")
-      .slice(0, 15)
-      .toLowerCase();
-    return `chk_${table.name}_${snippet}`;
-  };
 
   const addTable = (name: string = "new_table") => {
     const existingNames = tables.value.map((t) => t.name);
@@ -352,6 +348,8 @@ export const useSchemaStore = defineStore("schema", () => {
         f: foreignKeys.value,
         v: canvasTransform.value,
         s: selectedTableId.value,
+        ib: importedBaseline.value,
+        ih: importedHistory.value,
       };
       localStorage.setItem("db_schema_visualizer", JSON.stringify(data));
     } catch (e) {
@@ -407,6 +405,8 @@ export const useSchemaStore = defineStore("schema", () => {
         if (parsed.s && tables.value.some((t: Table) => t.id === parsed.s)) {
           selectedTableId.value = parsed.s;
         }
+        if (parsed.ib) importedBaseline.value = parsed.ib;
+        if (Array.isArray(parsed.ih)) importedHistory.value = parsed.ih;
       } finally {
         isHydrating = false;
       }
@@ -606,6 +606,8 @@ export const useSchemaStore = defineStore("schema", () => {
     canvasTransform,
     viewMode,
     isEmbed,
+    importedBaseline,
+    importedHistory,
     selectedTable,
     restoreSnapshot,
     addTable,
@@ -659,6 +661,7 @@ export const useSchemaStore = defineStore("schema", () => {
         foreignKeys.value = newFKs;
         selectedTableId.value = null;
         canvasTransform.value = { x: 0, y: 0, k: 1 };
+        importedBaseline.value = cloneSnapshot(newTables, newFKs);
       } finally {
         isHydrating = false;
       }
@@ -739,10 +742,60 @@ export const useSchemaStore = defineStore("schema", () => {
         foreignKeys.value = newFKs;
         selectedTableId.value = null;
         canvasTransform.value = { x: 0, y: 0, k: 1 };
+        importedBaseline.value = cloneSnapshot(newTables, newFKs);
       } finally {
         isHydrating = false;
       }
       saveToLocalStorage();
+    },
+
+    importFromMigrationHistory: async (files: MigrationFile[]) => {
+      let result: ReturnType<typeof foldMigrationHistory>;
+      try {
+        result = foldMigrationHistory(files);
+      } catch (e) {
+        throw new Error(
+          `Migration parse error: ${e instanceof Error ? e.message : e}`,
+        );
+      }
+      const { tables: newTables, foreignKeys: newFKs } = result.snapshot;
+
+      if (newTables.length === 0) {
+        throw new Error(
+          "No tables found after folding the provided migration files.",
+        );
+      }
+
+      // Simple grid layout (same convention as importFromSql)
+      const COLS = Math.ceil(Math.sqrt(newTables.length));
+      const X_GAP = 300;
+      const Y_GAP = 400;
+
+      newTables.forEach((table, i) => {
+        table.x = (i % COLS) * X_GAP + 100;
+        table.y = Math.floor(i / COLS) * Y_GAP + 100;
+      });
+
+      isHydrating = true;
+      try {
+        tables.value = newTables;
+        foreignKeys.value = newFKs;
+        selectedTableId.value = null;
+        canvasTransform.value = { x: 0, y: 0, k: 1 };
+        importedBaseline.value = cloneSnapshot(newTables, newFKs);
+        importedHistory.value = result.history;
+      } finally {
+        isHydrating = false;
+      }
+      saveToLocalStorage();
+
+      if (result.warnings.length > 0) {
+        toast(
+          `Imported with ${result.warnings.length} statement(s) skipped — see console for details.`,
+          "warning",
+        );
+        console.warn("[migrationFold] skipped statements", result.warnings);
+      }
     },
   };
 });

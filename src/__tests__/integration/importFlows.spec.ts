@@ -85,6 +85,16 @@ describe("SQL import", () => {
     expect(store.selectedTableId).toBeNull();
   });
 
+  it("importing sets importedBaseline to a snapshot of the imported schema", async () => {
+    const store = makeStore();
+    await store.importFromSql(SIMPLE_DDL);
+    expect(store.importedBaseline).not.toBeNull();
+    expect(store.importedBaseline!.tables.map((t) => t.name).sort()).toEqual([
+      "posts",
+      "users",
+    ]);
+  });
+
   it("invalid SQL throws an error and leaves the store unchanged", async () => {
     const store = makeStore();
     store.addTable("existing");
@@ -291,6 +301,27 @@ describe("importFromJson", () => {
     });
     await store.importFromJson(json);
     expect(store.tables.some((t) => t.name === "json_table")).toBe(true);
+  });
+
+  it("importing sets importedBaseline to a snapshot of the imported schema", async () => {
+    const store = makeStore();
+    const json = JSON.stringify({
+      tables: [
+        {
+          id: "t1",
+          name: "json_table",
+          columns: [],
+          indexes: [],
+          checkConstraints: [],
+          x: 0,
+          y: 0,
+        },
+      ],
+      foreignKeys: [],
+    });
+    await store.importFromJson(json);
+    expect(store.importedBaseline).not.toBeNull();
+    expect(store.importedBaseline!.tables[0].name).toBe("json_table");
   });
 
   it("invalid JSON throws", async () => {
