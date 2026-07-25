@@ -132,14 +132,19 @@ including an actual `ts_to_schema` call exercising the bundled compiler.
 **What's on you, not this repo:**
 - **Authentication** — `wrangler deploy` needs `wrangler login` (interactive
   OAuth) or a `CLOUDFLARE_API_TOKEN` env var. Neither is configured here.
-- **Custom domain** — `wrangler.toml` ships with a commented-out `routes`
-  block. Fill in your zone/domain there, or map it after deploying via the
-  Cloudflare dashboard (Workers & Pages → this worker → Triggers → Custom
-  Domains). Without either, it's reachable at the default
+- **Custom domain** — `wrangler.toml` ships with a commented-out `[[routes]]`
+  block using the same `pattern` + `custom_domain = true` shape already used
+  in `mail-worker`'s `wrangler.toml` for `mail.mystaline.dev` — uncomment and
+  point it at whatever subdomain you want (a suggested `mcp.mystaline.dev`
+  is filled in), or map it after deploying via the Cloudflare dashboard
+  (Workers & Pages → this worker → Triggers → Custom Domains). Without
+  either, it's reachable at the default
   `schemaviz-mcp.<your-subdomain>.workers.dev`.
-- **`compatibility_date`** — set conservatively (`2024-01-01`) in
-  `wrangler.toml` since it can't be in the future relative to Cloudflare's
-  clock; bump it if you want newer runtime behavior.
+- **`compatibility_date`** — set conservatively (`2024-01-01`, matching
+  `mail-worker`'s convention) since it can't be in the future relative to
+  Cloudflare's clock; bump it if you want newer runtime behavior. No
+  `nodejs_compat` flag either — verified locally that nothing here needs it,
+  also matching `mail-worker`.
 
 ## Test
 

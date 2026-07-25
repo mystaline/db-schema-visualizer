@@ -4,20 +4,17 @@ main = "dist/worker.js"
 # Deliberately conservative/past — Cloudflare rejects a compatibility_date
 # in the future relative to its own clock, and this file may be built or
 # deployed long after it's written. Bump it if you want newer runtime
-# behavior; nothing here needs anything exotic (just fetch/Request/Response
-# and standard JS).
+# behavior. Matches the convention already used in mail-worker.
 compatibility_date = "2024-01-01"
 
-# Cheap safety net: the MCP SDK / zod bundle may reference Node globals
-# (process, Buffer) in places that are never actually exercised by our
-# usage, but this flag costs nothing and avoids chasing that down by hand.
-compatibility_flags = ["nodejs_compat"]
+# No nodejs_compat flag — verified locally (wrangler dev, including an
+# actual ts_to_schema call exercising the bundled typescript compiler) that
+# nothing here actually needs it. Matches mail-worker's convention.
 
-# Uncomment and fill in to serve this worker on your own domain instead of
-# the default *.workers.dev subdomain. Requires the domain to already be
-# on your Cloudflare account (zone_name) — configurable from the dashboard
-# under Workers & Pages -> this worker -> Triggers -> Custom Domains, or here:
+# Uncomment and point at your own domain to serve this worker there instead
+# of the default *.workers.dev subdomain — same [[routes]] + custom_domain
+# shape mail-worker already uses for mail.mystaline.dev:
 #
-# routes = [
-#   { pattern = "mcp.yourdomain.com/*", zone_name = "yourdomain.com" }
-# ]
+# [[routes]]
+# pattern = "mcp.mystaline.dev"
+# custom_domain = true
