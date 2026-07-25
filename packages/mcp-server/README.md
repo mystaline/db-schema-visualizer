@@ -4,14 +4,16 @@ An MCP (Model Context Protocol) server exposing SchemaViz's schema conversion
 and codegen capabilities as tools, built on [`@schemaviz/core`](../core).
 
 Every tool is a stateless pure function — no session state is kept between
-calls — so the server ships with two entrypoints sharing the same tool
+calls — so the server ships with three entrypoints sharing the same tool
 registration logic (`src/tools/index.ts`):
 
 - **`stdio`** — for local use, spawned as a child process by an MCP client
   (e.g. Claude Code/Desktop-style config).
-- **`http`** — a Streamable HTTP server, deployable to any Node-compatible
-  host (including serverless platforms) since there's no persistent
-  in-memory session to maintain.
+- **`http`** — a Streamable HTTP server for any Node-compatible host
+  (a VPS, Fly.io/Render/Railway, Cloud Run, or Lambda via the
+  [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter)).
+- **`worker`** — a Cloudflare Workers entrypoint (fetch-handler shape, no
+  `node:http`) — see [Deploy to Cloudflare Workers](#deploy-to-cloudflare-workers) below.
 
 ## Tools
 
@@ -102,10 +104,42 @@ Point an MCP client that supports the Streamable HTTP transport at
 `http://host:3000/`. The server runs in stateless mode (a fresh internal
 `McpServer`/transport pair per request, per the MCP SDK's own recommended
 stateless pattern) — no session cookies/headers are required or issued.
-Deploying this to a true edge/serverless runtime (Cloudflare Workers, etc.)
-would swap `StreamableHTTPServerTransport` (the Node `http`-compatible
-wrapper used here) for the SDK's `WebStandardStreamableHTTPServerTransport`,
-which speaks the Fetch API's `Request`/`Response` directly.
+
+## Deploy to Cloudflare Workers
+
+`src/worker.ts` uses the MCP SDK's `WebStandardStreamableHTTPServerTransport`
+(Fetch API `Request`/`Response`, not `node:http`) and exports a plain
+`fetch(request)` handler — Workers' native shape, not a listening server.
+Same stateless-per-request design as `http.ts`.
+
+```sh
+pnpm --filter @schemaviz/mcp-server build:worker   # -> dist/worker.js
+pnpm --filter @schemaviz/mcp-server dev:worker      # wrangler dev, local verification
+pnpm --filter @schemaviz/mcp-server deploy          # builds, then wrangler deploy
+```
+
+Bundle size was measured, not assumed: `typescript` (needed only by
+`ts_to_schema`) is the largest dependency at 8.7MB uncompressed, but its
+Node-builtin-touching code paths (`fs`/`os`/`path`/`perf_hooks`, used only by
+its CLI/tracing machinery — never by `ts.createSourceFile`, which is all
+`parseTsInterfaces` calls) are marked `--external` in `build:worker` so
+esbuild doesn't choke on resolving them, and are simply never reached at
+runtime. The full bundle — SDK, zod, `@schemaviz/core`, `typescript`, and
+all — comes to **~1.7MB gzip-compressed**, comfortably under Cloudflare's
+3MB free-tier script size limit. Verified locally with `wrangler dev`,
+including an actual `ts_to_schema` call exercising the bundled compiler.
+
+**What's on you, not this repo:**
+- **Authentication** — `wrangler deploy` needs `wrangler login` (interactive
+  OAuth) or a `CLOUDFLARE_API_TOKEN` env var. Neither is configured here.
+- **Custom domain** — `wrangler.toml` ships with a commented-out `routes`
+  block. Fill in your zone/domain there, or map it after deploying via the
+  Cloudflare dashboard (Workers & Pages → this worker → Triggers → Custom
+  Domains). Without either, it's reachable at the default
+  `schemaviz-mcp.<your-subdomain>.workers.dev`.
+- **`compatibility_date`** — set conservatively (`2024-01-01`) in
+  `wrangler.toml` since it can't be in the future relative to Cloudflare's
+  clock; bump it if you want newer runtime behavior.
 
 ## Test
 
