@@ -135,8 +135,9 @@ including an actual `ts_to_schema` call exercising the bundled compiler.
 - **Custom domain** — `wrangler.toml` ships with a commented-out `[[routes]]`
   block using the same `pattern` + `custom_domain = true` shape already used
   in `mail-worker`'s `wrangler.toml` for `mail.mystaline.dev` — uncomment and
-  point it at whatever subdomain you want (a suggested `mcp.mystaline.dev`
-  is filled in), or map it after deploying via the Cloudflare dashboard
+  point it at whatever subdomain you want (a suggested
+  `schemaviz-mcp.mystaline.dev` is filled in), or map it after deploying via
+  the Cloudflare dashboard
   (Workers & Pages → this worker → Triggers → Custom Domains). Without
   either, it's reachable at the default
   `schemaviz-mcp.<your-subdomain>.workers.dev`.

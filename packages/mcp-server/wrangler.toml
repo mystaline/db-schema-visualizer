@@ -16,5 +16,5 @@ compatibility_date = "2024-01-01"
 # shape mail-worker already uses for mail.mystaline.dev:
 #
 # [[routes]]
-# pattern = "mcp.mystaline.dev"
+# pattern = "schemaviz-mcp.mystaline.dev"
 # custom_domain = true
