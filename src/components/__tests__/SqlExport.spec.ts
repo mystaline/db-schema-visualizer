@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSchemaSql } from "../../utils/sqlExporter";
+import { buildSchemaSql } from "@schemaviz/core";
 import type { Table, ForeignKey } from "../../stores/schemaStore";
 
 const mkTable = (overrides: Partial<Table> = {}): Table => ({

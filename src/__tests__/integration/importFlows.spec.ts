@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useSchemaStore } from "../../stores/schemaStore";
-import { parseDDL } from "../../utils/ddlParser";
+import { parseDDL } from "@schemaviz/core";
 import { PRESET_REGISTRY } from "../../utils/presets/index";
 
 function makeStore() {

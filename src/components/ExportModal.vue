@@ -4,13 +4,10 @@ import { useSchemaStore } from "../stores/schemaStore";
 import { useToast } from "../composables/useToast";
 import ModalShell from "./ModalShell.vue";
 import { useModalKeyboard } from "../composables/useModalKeyboard";
-import { buildSchemaSql, hasBrokenRefs, countCrossBoundaryFks } from "../utils/sqlExporter";
+import { buildSchemaSql, hasBrokenRefs, countCrossBoundaryFks, buildMermaidEr, buildDrizzleSchema, buildPrismaSchema } from "@schemaviz/core";
 import { downloadZip } from "../utils/zipExport";
 import { exportCanvasAsImage, type ImageFormat, type ImageScale } from "../utils/imageExport";
 import { useCanvasContentRef } from "../composables/useCanvasContentRef";
-import { buildMermaidEr } from "../utils/exporters/mermaid";
-import { buildDrizzleSchema } from "../utils/exporters/drizzle";
-import { buildPrismaSchema } from "../utils/exporters/prisma";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -214,7 +211,7 @@ const downloadMermaidFile = () => {
 };
 
 // ---- Drizzle Generation ----
-const drizzleResult = computed((): import("../utils/exporters/drizzle").DrizzleResult => {
+const drizzleResult = computed((): import("@schemaviz/core").DrizzleResult => {
   try {
     return buildDrizzleSchema(schemaStore.tables, schemaStore.foreignKeys);
   } catch (e) {
@@ -247,7 +244,7 @@ const downloadDrizzleFile = () => {
 };
 
 // ---- Prisma Generation ----
-const prismaResult = computed((): import("../utils/exporters/prisma").PrismaResult => {
+const prismaResult = computed((): import("@schemaviz/core").PrismaResult => {
   try {
     return buildPrismaSchema(schemaStore.tables, schemaStore.foreignKeys);
   } catch (e) {

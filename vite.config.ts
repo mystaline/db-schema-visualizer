@@ -60,6 +60,13 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     globals: true,
-    exclude: ['e2e/**', 'node_modules/**'],
+    // packages/** run their own test suites (own vitest config, own
+    // environment — packages/core needs "node", not "happy-dom") via
+    // `pnpm -r test`; excluded here to avoid duplicate/wrong-environment
+    // runs. The plain 'node_modules/**' pattern only matches the top-level
+    // folder, not nested ones like packages/mcp-server/node_modules — use
+    // '**/node_modules/**' so published packages that ship *.test.ts
+    // source files (e.g. zod) never leak into this run.
+    exclude: ['e2e/**', '**/node_modules/**', 'packages/**'],
   },
 })

@@ -1,3 +1,4 @@
+// keep in sync with packages/core/src/uuid.ts
 export function uuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();

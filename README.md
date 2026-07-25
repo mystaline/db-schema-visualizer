@@ -46,9 +46,22 @@ pnpm preview
 | State     | Pinia                   |
 | Build     | Vite 6                  |
 
+## Workspace layout
+
+This is a pnpm workspace. The web app lives at the repo root (unchanged);
+the schema model, parsers, and codegen it uses are published as a
+standalone package so they can power more than just the browser canvas:
+
+| Package | Purpose |
+| --- | --- |
+| `packages/core` | Framework-agnostic schema model + parsers/codegen (SQL, Prisma, Drizzle, Mermaid, Go, TypeScript) — see [its README](packages/core/README.md) |
+| `packages/mcp-server` | MCP server exposing `packages/core`'s capabilities as tools (schema↔Go, schema↔TS, SQL↔schema, JSON import, etc.) for AI agents — see [its README](packages/mcp-server/README.md) |
+| `packages/vscode-extension` | Reserved for a future VSCode extension (webview embedding this app's canvas) — not yet implemented |
+
 ## Planned
 
-- SQL import (reverse-engineer DDL into visual schema)
+- VSCode extension: a webview embedding this app's canvas with a schema
+  pre-applied, driven by `packages/mcp-server` or an extension command
 - Multi-project navigation with IndexedDB
 
 ## License

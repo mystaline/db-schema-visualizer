@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useSchemaStore } from "../../stores/schemaStore";
 import { useHistory } from "../../composables/useHistory";
-import { buildTableSql } from "../../utils/sqlExporter";
+import { buildTableSql } from "@schemaviz/core";
 
 function makeStore() {
   setActivePinia(createPinia());

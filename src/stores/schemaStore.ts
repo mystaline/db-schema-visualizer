@@ -1,62 +1,31 @@
 import { ref, computed, watch } from "vue";
 import { defineStore } from "pinia";
-import { parseDDL } from "../utils/ddlParser";
+import { parseDDL, normalizeImportedTable, type SchemaTable } from "@schemaviz/core";
 import { uuid } from "../utils/uuid";
 import { buildPreset, type PresetKey } from "../utils/presets/index";
 import { useToast } from "../composables/useToast";
 
-export interface Column {
-  id: string;
-  name: string;
-  type: string;
-  isPrimaryKey: boolean;
-  isNullable: boolean;
-  isUnique: boolean;
-  defaultValue: string | null;
-}
+export type {
+  Column,
+  IndexPart,
+  TableIndex,
+  CheckConstraint,
+  ForeignKey,
+} from "@schemaviz/core";
+import type {
+  Column,
+  IndexPart,
+  TableIndex,
+  CheckConstraint,
+  ForeignKey,
+} from "@schemaviz/core";
 
-export interface IndexPart {
-  type: "column" | "expression";
-  value: string; // columnId if type is 'column', raw expression string otherwise
-  order?: "ASC" | "DESC"; // Usually for columns, but Postgres supports it for expressions too
-}
-
-export interface TableIndex {
-  id: string;
-  name: string;
-  type: "normal" | "unique";
-  parts: IndexPart[];
-  filter?: string;
-  // Legacy format support
-  columnIds?: string[];
-  expressions?: string[];
-}
-
-export interface CheckConstraint {
-  id: string;
-  name: string;
-  expression: string;
-}
-
-export interface Table {
-  id: string;
-  name: string;
+// The web app's Table extends the core SchemaTable with canvas layout —
+// core has no concept of x/y since non-visual consumers (MCP tools, codegen)
+// never need it.
+export interface Table extends SchemaTable {
   x: number;
   y: number;
-  columns: Column[];
-  indexes: TableIndex[];
-  checkConstraints: CheckConstraint[];
-  notes?: string;
-}
-
-export interface ForeignKey {
-  id: string;
-  sourceTableId: string;
-  sourceColumnId: string;
-  targetTableId: string;
-  targetColumnId: string;
-  onDelete: "CASCADE" | "SET NULL" | "RESTRICT" | "NO ACTION";
-  onUpdate: "CASCADE" | "SET NULL" | "RESTRICT" | "NO ACTION";
 }
 
 export type ViewMode = "full" | "read";
@@ -371,30 +340,7 @@ export const useSchemaStore = defineStore("schema", () => {
       isHydrating = true;
       try {
         if (parsed.t) {
-          tables.value = parsed.t.map((table: Table) => ({
-            ...table,
-            checkConstraints: table.checkConstraints || [],
-            indexes: (table.indexes || []).map((idx: TableIndex) => {
-              if (idx.columnIds && !idx.parts) {
-                return {
-                  ...idx,
-                  parts: [
-                    ...idx.columnIds.map((id: string) => ({
-                      type: "column",
-                      value: id,
-                      order: "ASC",
-                    })),
-                    ...(idx.expressions || []).map((expr: string) => ({
-                      type: "expression",
-                      value: expr,
-                      order: "ASC",
-                    })),
-                  ],
-                };
-              }
-              return idx;
-            }),
-          }));
+          tables.value = parsed.t.map((table: Table) => normalizeImportedTable(table));
         }
         if (parsed.f) foreignKeys.value = parsed.f;
         if (parsed.v) {
@@ -492,30 +438,7 @@ export const useSchemaStore = defineStore("schema", () => {
       // set to "read" while tables still holds the user's own schema).
       const newViewMode: ViewMode = parsed.p === "read" ? "read" : "full";
       const newTables = parsed.t
-        ? (parsed.t as Table[]).map((table: Table) => ({
-            ...table,
-            checkConstraints: table.checkConstraints || [],
-            indexes: (table.indexes || []).map((idx: TableIndex) => {
-              if (idx.columnIds && !idx.parts) {
-                return {
-                  ...idx,
-                  parts: [
-                    ...idx.columnIds.map((id: string) => ({
-                      type: "column" as const,
-                      value: id,
-                      order: "ASC" as const,
-                    })),
-                    ...(idx.expressions || []).map((expr: string) => ({
-                      type: "expression" as const,
-                      value: expr,
-                      order: "ASC" as const,
-                    })),
-                  ],
-                };
-              }
-              return idx;
-            }),
-          }))
+        ? (parsed.t as Table[]).map((table: Table) => normalizeImportedTable(table))
         : null;
       const newFKs: ForeignKey[] | null = Array.isArray(parsed.f)
         ? parsed.f
@@ -635,23 +558,25 @@ export const useSchemaStore = defineStore("schema", () => {
           `SQL parse error: ${e instanceof Error ? e.message : e}`,
         );
       }
-      const { tables: newTables, foreignKeys: newFKs } = parsed;
+      const { tables: parsedTables, foreignKeys: newFKs } = parsed;
 
-      if (newTables.length === 0) {
+      if (parsedTables.length === 0) {
         throw new Error(
           "No CREATE TABLE statements found in the provided SQL.",
         );
       }
 
-      // Simple grid layout
-      const COLS = Math.ceil(Math.sqrt(newTables.length));
+      // Simple grid layout — parseDDL returns layout-less SchemaTable[], so
+      // canvas position is synthesized here rather than inside core.
+      const COLS = Math.ceil(Math.sqrt(parsedTables.length));
       const X_GAP = 300;
       const Y_GAP = 400;
 
-      newTables.forEach((table, i) => {
-        table.x = (i % COLS) * X_GAP + 100;
-        table.y = Math.floor(i / COLS) * Y_GAP + 100;
-      });
+      const newTables: Table[] = parsedTables.map((table, i) => ({
+        ...table,
+        x: (i % COLS) * X_GAP + 100,
+        y: Math.floor(i / COLS) * Y_GAP + 100,
+      }));
 
       isHydrating = true;
       try {
@@ -697,30 +622,7 @@ export const useSchemaStore = defineStore("schema", () => {
             );
           }
           const typedTable = t as unknown as Table;
-          return {
-            ...typedTable,
-            indexes: (typedTable.indexes || []).map((idx: TableIndex) => {
-              if (idx.columnIds && !idx.parts) {
-                return {
-                  ...idx,
-                  parts: [
-                    ...idx.columnIds.map((id: string) => ({
-                      type: "column" as const,
-                      value: id,
-                      order: "ASC" as const,
-                    })),
-                    ...(idx.expressions || []).map((expr: string) => ({
-                      type: "expression" as const,
-                      value: expr,
-                      order: "ASC" as const,
-                    })),
-                  ],
-                };
-              }
-              return idx;
-            }),
-            checkConstraints: typedTable.checkConstraints || [],
-          };
+          return normalizeImportedTable(typedTable);
         },
       );
 

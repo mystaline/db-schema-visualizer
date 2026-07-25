@@ -5,10 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
 import { useSchemaStore } from "../../stores/schemaStore";
-import { buildTableSql } from "../../utils/sqlExporter";
-import { buildDrizzleSchema } from "../../utils/exporters/drizzle";
-import { buildPrismaSchema } from "../../utils/exporters/prisma";
-import { buildMermaidEr } from "../../utils/exporters/mermaid";
+import { buildTableSql, buildDrizzleSchema, buildPrismaSchema, buildMermaidEr } from "@schemaviz/core";
 
 function makeStore() {
   setActivePinia(createPinia());

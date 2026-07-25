@@ -16,6 +16,7 @@
     "generate-pwa-assets": "pwa-assets-generator --config pwa-assets.config.ts"
   },
   "dependencies": {
+    "@schemaviz/core": "workspace:*",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
     "pinia": "^2.2.6",
